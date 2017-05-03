@@ -76,3 +76,24 @@ unpickling/compiling of the `Stan` model file automatically fills up `/tmp` and
 thus halts the whole program. The current solution is to change the environment
 variable `TMPDIR` to some local directory which does not have a space limit, and
 limit the number of CPUs to 5 at the same time.
+
+## Good reads on A/B testing
+- Statistical advice for A/B Testing
+
+> http://sl8r000.github.io/ab_testing_statistics/
+
+- Most winning A/B test results Are Illusory
+
+> http://www.qubit.com/sites/default/files/pdf/mostwinningabtestresultsareillusory_0.pdf
+
+- Warning signs in experimental design and interpretation
+
+> http://norvig.com/experiment-design.html
+
+- How to do A/B testing with early stopping correctly
+
+> http://www.aarondefazio.com/tangentially/?p=83
+
+- A/B tests at Airbnb
+
+> https://medium.com/airbnb-engineering/experiments-at-airbnb-e2db3abf39e7
