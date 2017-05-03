@@ -1,0 +1,4 @@
+pandas
+joblib
+scipy
+pystan >= 2.12

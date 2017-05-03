@@ -1,0 +1,599 @@
+---
+title: "When is it OK to peek into my A/B tests?"
+subtitle: 
+author: |
+  | Jie Bao
+  | Team Octopus
+date: "2017-03-02"
+output:
+  xaringan::moon_reader:
+    lib_dir: libs
+    nature:
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+    css: ["default","example.css"]
+---
+background-image: url(paul.jpg)
+background-size: contain
+
+---
+background-image: url(team.jpg)
+background-size: contain
+
+---
+background-image: url(dashboard.png)
+background-size: contain
+
+---
+background-image: url(octopus_tv.png)
+background-size: contain
+
+---
+background-image: url(expan.png)
+background-size: contain
+
+---
+
+# A/B test workflow (NHST)
+
+1. Estimate the expected **effect size** or
+define the minimal meaningful effect size.
+
+1. *A priori* define the tolerated long-term rate of false
+positive decisions (usually $\alpha$ = 5%) and the tolerated
+long-term rate of false negative decisions (usually $\beta$ = 20%).
+
+1. Run an *a priori* power analysis, which gives the necessary
+**sample size** to detect an effect (i.e., to reject $H_0$)
+within the limits of the defined error rates.
+
+1. **Run** the experiment with the sample size that was obtained
+from the *a priori* power analysis.
+
+1. Do the pre-defined **analysis**.
+Reject the $H_0$ if $p < \alpha$. Report a point estimate and
+the confidence interval for the effect size.
+
+---
+# Challenges
+
+.center[![](peeking_justice.png)]
+
+> **A**: Can I peek into the data everyday and stop the experiment as soon as I see a 
+significant uplift?
+ 
+> **B**: I want to make sure that I didn't introduce any bugs into the new variant,
+which leads to a negative impact. Can I have a close look of the experiment 
+every day?
+ 
+> ...
+
+---
+class: inverse, center, middle
+background-color: #1762a1
+
+# The simulation
+
+---
+
+# A hierarchical model
+
+- We offer two variants to a number of customers, each customer is 
+observed/measured for $n$ times, where $n \sim Poisson_+(\lambda)$
+
+- $n$ time points are then uniformly distributed 
+
+- For each observation/metric $m$, 
+    - either $m_{t|c} \sim \mathcal{N}(\mu,\sigma^2)$ in an **A/A test**, 
+    - or $m_c \sim \mathcal{N}(\mu,\sigma^2)$ for the control group and 
+    $m_t \sim \mathcal{N}(\mu+\alpha,\sigma^2)$ for the treatment group, as in
+    an **A/B test**
+
+- We sample the data at 20 consecutive time points, at each time sum up the 
+metric on the customer level, perform NHST
+
+- 1000 repetitions
+
+- The expected value for each variant: $\frac{\lambda}{(1-exp(-\lambda))} \cdot \mu$
+
+---
+
+# Peeking inflates the false positive rate in an A/A test
+
+```{r optional_stopping, echo=FALSE, message=FALSE, fig.align='center', fig.height=4, dev='svg'}
+library(dplyr)
+library(knitr)
+library(ggplot2)
+theme_set(theme_bw(15))
+
+#dat <- read.csv('~/slurm/src/early-stopping/optional_stopping/optional_stopping_20170216.csv', header = FALSE)
+dat <- read.csv('optional_stopping_20170216.csv', header = FALSE)
+stop <- dat %>% group_by(V1) %>% arrange(desc(V3),V2) %>% slice(1)
+stop$time <- stop$V2
+stop$time[stop$V3=='False'] <- 19
+stop$early <- 'no'
+stop$early[stop$time!=19] <- 'yes'
+ggplot(stop,aes(time,fill=early)) + 
+  geom_histogram() + 
+  scale_fill_manual(values=c('yes'='red','no'='gray')) +
+  labs(title=paste0('A/A FPR: ',eval(sum(stop$early=='yes')/nrow(stop)))) +
+  theme(legend.position=c(0.1,0.8),legend.background=element_blank())
+```
+
+
+<!-- ---
+
+# Fixed-horizon test generates the expected error rate
+
+```{r fixed_horizon, echo=FALSE, message=FALSE, fig.align='center', fig.height=4, dev='svg'}
+#dat <- read.csv('~/slurm/src/early-stopping/fixed_horizon/fixed_horizon_20170215.csv', header = FALSE)
+dat <- read.csv('fixed_horizon_20170215.csv', header = FALSE)
+dat$simulation <- 1:nrow(dat)
+dat$significant <- 'no'
+dat$significant[dat$V3=='True'] <- 'yes'
+ggplot(dat,aes(x=simulation,xend=simulation,y=V1,yend=V2,colour=significant)) + 
+  geom_segment() + 
+  scale_colour_manual(values=c('yes'='red','no'='gray')) +
+  labs(y='Confidence Interval',title=paste0('FPR: ',eval(sum(dat$significant=='yes')/nrow(dat)))) +
+  theme(legend.position='top')
+``` 
+-->
+
+---
+class: inverse, center, middle
+background-color: #1762a1
+
+# Group sequential design
+
+---
+
+# Group sequential methods
+
+- Clinical trials: fixed sample size design vs. sequential design
+
+- 1947: sequential probability ratio test
+
+- 1970s: predetermined significance level $\alpha'$, Pocock (constant), 
+O'Brien and Fleming (slowly increasing)
+
+- 1980s: generalization by Lan and DeMets with the $\alpha$-spending function
+
+--
+
+<center><img src="spending_function.png" width="60%"></center>
+
+---
+
+# Adaptive decision boundary
+
+```{r bound, echo=FALSE, message=FALSE, fig.align='center', fig.height=4, dev='svg'}
+val <- c( 8.        ,  6.1979503 ,  4.3826127 ,  3.57838829,  3.09897516,
+        2.77180765,  2.53030262,  2.34260503,  2.19130635,  2.06598344,
+        1.95996398)
+df <- data.frame(bound=val, x=seq(0,1,0.1))
+ggplot(df,aes(x,bound)) + 
+  geom_line() +
+  geom_line(aes(x,-bound)) +
+  labs(x='Information fraction',y='Z-score bound') 
+```
+
+---
+
+# Controlled error rate in the A/A test
+
+```{r group_sequential, echo=FALSE, message=FALSE, fig.align='center', fig.height=4, dev='svg'}
+#dat <- read.csv('~/slurm/src/early-stopping/group_sequential/group_sequential_normal_same_20170216.csv', header = FALSE)
+dat <- read.csv('group_sequential_normal_same_20170216.csv', header = FALSE)
+stop <- dat %>% group_by(V1) %>% arrange(desc(V3),V2) %>% slice(1)
+stop$time <- stop$V2
+stop$time[stop$V3=='False'] <- 19
+stop$early <- 'no'
+stop$early[stop$time!=19] <- 'yes'
+ggplot(stop,aes(time,fill=early)) + 
+  geom_histogram() + 
+  scale_fill_manual(values=c('yes'='red','no'='gray')) +
+  xlim(0,20) +
+  labs(title=paste0('A/A FPR: ',eval(sum(stop$early=='yes')/nrow(stop)))) +
+  theme(legend.position=c(0.1,0.8),legend.background=element_blank())
+```
+
+---
+
+# Estimated effect size of an A/B test is biased
+
+```{r group_sequential_bias, echo=FALSE, message=FALSE, fig.align='center', fig.height=4, dev='svg'}
+#dat <- read.csv('~/slurm/src/early-stopping/group_sequential/group_sequential_normal_shifted_20170220.csv', header = FALSE)
+dat <- read.csv('group_sequential_normal_shifted_20170220.csv', header = FALSE)
+stop <- dat %>% group_by(V1) %>% arrange(desc(V3),V2) %>% slice(1)
+stop$time <- stop$V2
+stop$time[stop$V3=='False'] <- 19
+stop$early <- 'no'
+stop$early[stop$time!=19] <- 'yes'
+merged <- merge(dat[,c('V1','V2','V4')], stop[,c('V1','time','early')], by.x=c('V1','V2'), by.y=c('V1','time'))
+ggplot(merged,aes(V4,fill=early)) + 
+  geom_density(alpha=0.5) + 
+  geom_vline(xintercept = 3/(1-exp(-3))*1, linetype='dashed') +
+  scale_fill_manual(values=c('yes'='red','no'='gray')) +
+  labs(x='absolute effect size') +
+  #theme(legend.position=c(0.1,0.8),legend.background=element_blank())
+  theme(legend.position='none')
+```
+
+---
+
+# ...or not
+
+```{r no_bias, echo=FALSE, message=FALSE, fig.align='center', fig.height=4, dev='svg'}
+#dat <- read.csv('~/slurm/src/early-stopping/group_sequential/group_sequential_normal_shifted_20170220.csv', header = FALSE)
+dat <- read.csv('group_sequential_normal_shifted_20170227.csv', header = FALSE)
+stop <- dat %>% group_by(V1) %>% arrange(desc(V3),V2) %>% slice(1)
+stop$time <- stop$V2
+stop$time[stop$V3=='False'] <- 19
+stop$early <- 'no'
+stop$early[stop$time!=19] <- 'yes'
+merged <- merge(dat[,c('V1','V2','V4')], stop[,c('V1','time','early')], by.x=c('V1','V2'), by.y=c('V1','time'))
+ggplot(stop,aes(V4,fill=early)) + 
+  geom_density(alpha=0.5) + 
+  geom_vline(xintercept = 1, linetype='dashed') +
+  scale_fill_manual(values=c('yes'='red','no'='gray')) +
+  labs(x='absolute effect size') +
+  #theme(legend.position=c(0.1,0.8),legend.background=element_blank())
+  theme(legend.position='none')
+```
+
+&#x26a0; Estimated effect size for non-hierarchical metrics is accurate
+
+---
+# The evaluation metrics
+
+- **Efficiency**: how much reduction in run-time?
+
+- **Error rate**: false positive/negative rate?
+
+- **Bias**: accurate estimate of effect size?
+
+--
+
+<table style="width:80%">
+  <caption>Group Sequential</caption>
+  <tr>
+    <th></th>
+    <th>A/A</th> 
+    <th>A/B</th>
+  </tr>
+  <tr>
+    <td align="right">Efficiency (% run-time)</td>
+    <td align="middle">98.9%</td> 
+    <td align="middle">5%</td>
+  </tr>
+  <tr>
+    <td align="right">Error rate</td>
+    <td align="middle">4.4%</td> 
+    <td align="middle">0%</td>
+  </tr>
+  <tr>
+    <td align="right">Bias</td>
+    <td align="middle">-</td> 
+    <!--<td align="middle">68.3%</td>-->
+    <td align="middle">0.06%</td>
+  </tr>
+</table>
+
+- &#x26a0; frequentist statistics cannot accept null hypotheses -> does not stop early
+when there's no significant difference between the variants
+
+- type I error rate as pre-specified, high statistical power
+
+- effect size estimate for non-hierarchical metrics unbiased
+
+---
+class: inverse, center, middle
+background-color: #1762a1
+
+# Bayes factor
+
+---
+
+# Bayes factor
+
+- Bayesian alternative to classical hypothesis testing (model selection)
+
+- 1920s: Jeffreys, probability theory as a means of induction, *Jeffreys' K*
+
+- Recall the Bayes' rule
+$$
+p(H|D) \sim p(D|H)p(H)
+$$
+
+- the ratio of the posterior densities
+
+$$
+\frac{p(H_0|D)}{p(H_1|D)}=\frac{p(H_0)}{p(H_1)}\frac{p(D|H_0)}{p(D|H_1)}
+$$
+- and the ratio of the marginal likelihoods
+
+$$
+BF_{01}=\frac{p(D|H_0)}{p(D|H_1)}
+$$
+is also called the Bayes factor, which quantifies the relative likelihood, or weight of evidence based on the data. 
+
+---
+
+# The calculation
+
+```{r jzs_prior, echo=FALSE, message=FALSE, fig.align='center', fig.height=3, dev='svg'}
+x <- seq(-20,20,length.out=1000)
+df <- data.frame(x=x,y=1/(pi*(1+x^2)),label='H1: delta ~ Cauchy(0,1)')
+df <- rbind(df, data.frame(x=c(0,0),y=c(0,0.5),label='H0: delta = 0'))
+ggplot(df,aes(x,y,linetype=label)) + 
+  geom_line() + 
+  labs(x=expression(delta),y='density',title=expression(paste('Prior distributions P(',delta,'|H)'))) +
+  theme(legend.position=c(0.2,0.8),legend.background=element_blank(),
+        legend.key=element_blank(),legend.title=element_blank())
+```
+
+One can further derive
+$$
+BF_{01}=\frac{p_0(D)}{p_1(D)}=\frac{p_1(\delta=0|D)}{p_1(\delta=0)}
+$$
+which is called the **Savage-Dickey density ratio**.
+
+---
+
+# The posterior density
+
+```{r ratio, echo=FALSE, message=FALSE, fig.align='center', fig.height=4, dev='svg'}
+trace <- read.csv('../data/delta_trace.csv', header = FALSE)
+ggplot(trace,aes(V1)) + 
+  geom_density() + 
+  geom_vline(xintercept = 0, linetype='dashed') +
+  labs(x=expression(delta),y='density',title=expression(paste('P1(',delta,'|D)'))) +
+  theme(legend.position=c(0.2,0.8),legend.background=element_blank(),
+        legend.key=element_blank(),legend.title=element_blank())
+```
+
+
+---
+
+# Bayes factor controls the type I error
+
+```{r bayes_factor, echo=FALSE, message=FALSE, fig.align='center', fig.height=4, dev='svg'}
+#dat <- read.csv('~/slurm/src/early-stopping/bayes_factor/bayes_factor_normal_same_cauchy_1.0_20170222.csv', header = FALSE)
+dat <- read.csv('bayes_factor_normal_same_cauchy_1.0_20170222.csv', header = FALSE)
+diff <- dat %>% group_by(V1) %>% summarise(diff=ifelse(min(V3)<1/3,'yes','no'))
+merged <- merge(dat, diff, by='V1')
+ggplot(merged,aes(V2,V3,colour=diff,group=V1)) + 
+  geom_line() + 
+  geom_hline(yintercept = 3, linetype='dashed') +
+  geom_hline(yintercept = 1/3, linetype='dashed') +
+  scale_colour_manual(values=c('yes'='red','no'='gray')) +
+  scale_y_log10() +
+  labs(x='time',y='Bayes factor (log)',title=paste0('A/A FPR: ',eval(sum(diff$diff=='yes')/nrow(diff)))) +
+  theme(legend.position='none')
+```
+
+---
+
+# Bayes factor
+
+<table style="width:80%">
+  <tr>
+    <th></th>
+    <th>A/A</th> 
+    <th>A/B</th>
+  </tr>
+  <tr>
+    <td align="right">Efficiency (% run-time)</td>
+    <td align="middle">5.2%</td> 
+    <td align="middle">?</td>
+  </tr>
+  <tr>
+    <td align="right">Error rate</td>
+    <td align="middle">0.9%</td> 
+    <td align="middle">?</td>
+  </tr>
+  <tr>
+    <td align="right">Bias</td>
+    <td align="middle">-</td> 
+    <td align="middle">?</td>
+  </tr>
+</table>
+
+- Bayes factor can accept the null hypotheses
+
+- low false positive rate
+
+- &#x26a0; sensitive to the prior
+
+---
+
+class: inverse, center, middle
+background-color: #1762a1
+
+# Bayes precision
+
+---
+
+# Parameter estimation
+
+- Posterior distribution with the highest density interval
+
+- Posterior width decreases with time (narrow posterior -> high precision)
+
+```{r posterior_width, echo=FALSE, message=FALSE, fig.align='center', fig.height=4, dev='svg'}
+early <- read.csv('../data/delta_trace_day_1.csv', header = FALSE)
+early$label <- 'day 1'
+late <- read.csv('../data/delta_trace_day_100.csv', header = FALSE)
+late$label <- 'day 20'
+df <- rbind(early, late)
+ggplot(df,aes(V1,linetype=label)) + 
+  geom_density() +
+  labs(x=expression(delta),y='density',title=expression(paste('P1(',delta,'|D)'))) +
+  theme(legend.position=c(0.1,0.8),legend.background=element_blank(),
+        legend.key=element_blank(),legend.title=element_blank())
+```
+
+---
+
+# Posterior widths consistently decrease
+
+```{r width_over_time, echo=FALSE, message=FALSE, fig.align='center', fig.height=4, dev='svg'}
+#dat <- read.csv('~/slurm/src/early-stopping/bayes_factor/bayes_factor_normal_same_cauchy_1.0_20170222.csv', header = FALSE)
+dat <- read.csv('precision_normal_shifted_20170222.csv', header = FALSE)
+ggplot(dat,aes(V2,V4,group=V1)) + 
+  geom_line() + 
+  labs(x='time',y=expression(paste('width of P(',delta,'|D)')),title='A/B') +
+  theme(legend.position='none')
+```
+
+---
+
+# Effect size approaches the true value over time
+
+```{r bias_over_time, echo=FALSE, message=FALSE, fig.align='center', fig.height=4, dev='svg'}
+#dat <- read.csv('~/slurm/src/early-stopping/bayes_factor/bayes_factor_normal_same_cauchy_1.0_20170222.csv', header = FALSE)
+dat <- read.csv('precision_normal_shifted_20170227.csv', header = FALSE)
+ggplot(dat,aes(V2,V3,group=V1)) + 
+  geom_line(colour='gray') + 
+  #geom_hline(yintercept = 3/(1-exp(-3))*1, linetype='dashed') +
+  geom_hline(yintercept = 1, linetype='dashed') +
+  labs(x='time',y='effect size',title='A/B') +
+  theme(legend.position='none')
+```
+
+---
+
+# Bayes precision
+
+<table style="width:80%">
+  <tr>
+    <th></th>
+    <th>A/A</th> 
+    <th>A/B</th>
+  </tr>
+  <tr>
+    <td align="right">Efficiency (% run-time)</td>
+    <td align="middle">33.5%</td> 
+    <td align="middle">44%</td>
+  </tr>
+  <tr>
+    <td align="right">Error rate</td>
+    <td align="middle">0%</td> 
+    <td align="middle">0%</td>
+  </tr>
+  <tr>
+    <td align="right">Bias</td>
+    <td align="middle">-</td> 
+    <!--<td align="middle">43.8%</td>-->
+    <td align="middle">0.05%</td>
+  </tr>
+</table>
+
+- low error rate
+
+- trade-off between run-time and bias in effect size
+
+- &#x26a0; dependency of the threshold parameter?
+
+---
+
+class: inverse, center, middle
+background-color: #1762a1
+
+# Real experiments
+
+---
+
+# Two examples
+
+- **A/A test**: NL PDP, control A / control B
+  - run-time: 2016-02-09 -- 2016-03-14
+  - sample size: 2592095
+  - no significant change in conversion rate
+
+--
+
+- **A/B test**: DE gender-split landing page, control / magazine / deep link
+  - run-time: 2015-10-27 -- 2015-11-23
+  - sample size: 1693699
+  - conversion rate&#x2193;
+
+<img src="magazine.png" width="50%"><img src="deep_link.png" width="50%">
+
+---
+## A/A test
+
+```{r aa_kable, echo=FALSE, results='asis'}
+df <- data.frame(a=c('100%','\u2713','--'), b=c('2.9%','\u2713','--'), c=c('2.9%','\u2713','--'), row.names = c('Efficiency (% run-time)','Error','Bias'))
+colnames(df) <- c('Group Sequential','Bayes Factor','Bayes Precision')
+kable(df, format='html', align=c('c','c','c'))
+```
+
+- Bayesian methods can accept null hypotheses -> most effective when effect size
+is small
+
+--
+
+## A/B test
+
+```{r ab_kable, echo=FALSE, results='asis'}
+#df <- data.frame(a=c('64.3%','\u2713','9.8%'), b=c('3.6%','\u2717','--'), c=c('3.6%','\u2717','--'), row.names = c('Efficiency (% run-time)','Error','Bias'))
+df <- data.frame(a=c('64.3%','\u2713','4.8%'), b=c('3.6%','\u2717','--'), c=c('3.6%','\u2717','--'), row.names = c('Efficiency (% run-time)','Error','Bias'))
+colnames(df) <- c('Group Sequential','Bayes Factor','Bayes Precision')
+kable(df, format='html', align=c('c','c','c'))
+```
+
+- Bayesian methods stop earlier than the group sequential method, but lead to
+*wrong* conclusions
+
+---
+
+class: inverse, center, middle
+background-color: #1762a1
+
+# Conclusions and outlook
+
+---
+
+## Conclusions
+
+- Scenario A (early effect size estimation): group sequential + non-hierarchical
+metrics
+
+- Scenario B (early binary decision making): Bayes precision
+
+--
+
+## Outlook
+
+- Dependency/Sensitivity of the Bayes precision threshold needs to be 
+investigated
+
+- Bayesian power analysis? -> lower bound on the sample size (run-time)
+
+- Early stopping with hierarchical metrics is always biased?
+
+---
+
+class: inverse, center, middle
+background-color: #1762a1
+
+# Thank you!
+
+`https://github.com/zalando/expan`
+
+`https://github.bus.zalan.do/octopus/early-stopping`
+
+<!-- ---
+
+It is widely accepted to evaluate an A/B test based on Null Hypothesis 
+Significance Test combined with a fixed sample size design. However, business 
+contexts often require the early stopping of an experiment, either to reduce
+the run-time and make quick decisions, or to minimize the potential negative 
+impact in case of under-performance of the new variant. Naive peeking, on
+the other hand, always leads to an inflated false 
+positive rate. Here we explore several early stopping algorithms in terms of
+error rate, bias and efficiency. We provide examples in both simulations and
+real A/B tests.
+-->

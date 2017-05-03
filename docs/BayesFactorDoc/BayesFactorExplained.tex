@@ -1,0 +1,221 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Short Sectioned Assignment
+% LaTeX Template
+% Version 1.0 (5/5/12)
+%
+% This template has been downloaded from:
+% http://www.LaTeXTemplates.com
+%
+% Original author:
+% Frits Wenneker (http://www.howtotex.com)
+%
+% License:
+% CC BY-NC-SA 3.0 (http://creativecommons.org/licenses/by-nc-sa/3.0/)
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%----------------------------------------------------------------------------------------
+%	PACKAGES AND OTHER DOCUMENT CONFIGURATIONS
+%----------------------------------------------------------------------------------------
+
+\documentclass[paper=a4, fontsize=11pt]{scrartcl} % A4 paper and 11pt font size
+
+\usepackage[T1]{fontenc} % Use 8-bit encoding that has 256 glyphs
+\usepackage{fourier} % Use the Adobe Utopia font for the document - comment this line to return to the LaTeX default
+\usepackage[english]{babel} % English language/hyphenation
+\usepackage{amsmath,amsfonts,amsthm} % Math packages
+
+\usepackage{lipsum} % Used for inserting dummy 'Lorem ipsum' text into the template
+
+\usepackage{sectsty} % Allows customizing section commands
+\allsectionsfont{\centering \normalfont\scshape} % Make all sections centered, the default font and small caps
+
+\usepackage{fancyhdr} % Custom headers and footers
+\pagestyle{fancyplain} % Makes all pages in the document conform to the custom headers and footers
+\fancyhead{} % No page header - if you want one, create it in the same way as the footers below
+\fancyfoot[L]{} % Empty left footer
+\fancyfoot[C]{} % Empty center footer
+\fancyfoot[R]{\thepage} % Page numbering for right footer
+\renewcommand{\headrulewidth}{0pt} % Remove header underlines
+\renewcommand{\footrulewidth}{0pt} % Remove footer underlines
+\setlength{\headheight}{13.6pt} % Customize the height of the header
+
+\numberwithin{equation}{section} % Number equations within sections (i.e. 1.1, 1.2, 2.1, 2.2 instead of 1, 2, 3, 4)
+\numberwithin{figure}{section} % Number figures within sections (i.e. 1.1, 1.2, 2.1, 2.2 instead of 1, 2, 3, 4)
+\numberwithin{table}{section} % Number tables within sections (i.e. 1.1, 1.2, 2.1, 2.2 instead of 1, 2, 3, 4)
+
+\setlength\parindent{0pt} % Removes all indentation from paragraphs - comment this line for an assignment with lots of text
+
+\usepackage{amsmath}
+
+%----------------------------------------------------------------------------------------
+%	TITLE SECTION
+%----------------------------------------------------------------------------------------
+
+\newcommand{\horrule}[1]{\rule{\linewidth}{#1}} % Create horizontal rule command with 1 argument of height
+
+\title{	
+\normalfont \normalsize 
+\textsc{} \\ [25pt] % Your university, school and/or department name(s)
+\horrule{0.5pt} \\[0.4cm] % Thin top horizontal rule
+\huge Bayesian Hypothesis Testing in ExpAn  \\ % The assignment title
+\horrule{2pt} \\[0.5cm] % Thick bottom horizontal rule
+}
+
+\author{Shan Huang} % Your name
+
+\date{\normalsize\today} % Today's date or a custom date
+
+\begin{document}
+
+\maketitle % Print the title
+
+%----------------------------------------------------------------------------------------
+%	PROBLEM 1
+%----------------------------------------------------------------------------------------
+
+This documentation explains how Bayes factor is implemented in ExpAn. 
+
+It is not a formal paper. The intention of the documentation is to share knowledge between developers internally, and I want to keep it short. 
+
+\section{Problem}
+Given samples $\textbf{x}$ from treatment group, samples $\textbf{y}$ from control group\footnote{Control is the group for baseline metric. So $y$ is the baseline. We add a random variable on $y$ to get $x$. This is somewhat confusing to me, but it is the terminology we are using throughout ExpAn. }, we want to know whether there is a statistically significant difference.
+
+%We are interested in the difference of treatment and control: $z = y-x$.
+
+\section{ Model setup}
+
+We assume that
+\begin{align} 
+\begin{split}
+x &\sim \mathcal{N}(\mu + \alpha, \sigma^2)\\
+y &\sim \mathcal{N}(\mu, \sigma^2)
+\end{split}					
+\end{align}
+
+The "z-scored" or "standardised" difference we are interested in is:
+\begin{align}
+\begin{split}
+\delta  &= \frac{\alpha}{ \sigma}
+\end{split}					
+\end{align}
+ 
+Before seeing any data, we place the following non-informative priors on the parameters:
+\begin{align}
+\begin{split}
+\mu &\sim \mathit{Cauchy} (0, 1) \\
+\sigma &\sim \mathit{Gamma} (2, 2)
+\end{split}
+\end{align}
+
+\section{Bayesian hypothesis testing}
+\label{sec:byt}
+We are interested in the "standardised" difference $\delta$. Therefore, we need to make hypothesis on $\delta$ and compare the hypothesis. 
+
+Note that our null hypothesis of $\delta$ is always a fixed value $0$, which means we believe there is no difference at all. On the other hand, our alternative hypothesis $H_1$ is a probability distribution, such that we can update the posterior $p(H_1 |D)$, or in other notation $p_1(D)$, after seeing the data.
+\begin{align}
+\begin{split}
+H_0:  \delta &= 0 \\
+H_1:  \delta &\sim \mathit{Cauchy} (0, 1)
+\end{split}	
+\end{align}
+
+After seeing the data, we compute the posterior distribution $p(H_1 |D)$ represented by $p_1( \delta | D)$. This is done via MCMC sampling from \texttt{StanModel.sampling}, which is pretty slow\footnote{Is there a better way? Maybe there exist an analytical solution.} and might have some potential improvements.
+
+After getting the posterior, we compute the .95 posterior density interval and show it in our result object in column \texttt{pctile} and \texttt{value}. This interval is computed via another MCMC sampling, here we implemented this method ourselves in \texttt{early\_stopping.HDI\_from\_MCMC}.
+
+
+
+\section{Early stopping}
+
+\subsection{Bayes precision}
+We use the width of .95 posterior interval as the stop criteria. The smaller the density interval is, the more certain we are about the posterior.
+If we are certain about our posterior, then we can stop. ;)
+
+For some reason, we set the threshold of width to 0.08.
+
+\subsection{Bayes factor}
+Bayes factor simply compares the ratio of likelihood:
+\begin{align}
+\begin{split}
+BF_{01} = \frac{p(D|H_0)}{p(D|H_1)}
+\end{split}
+\end{align}
+
+If this value is big or small enough (which means the difference between two hypothesis is pretty large), we make the decision of early stopping.
+For some reason, we set the threshold to a heuristic value: $BF_{01}  >3$ or $BF_{01}  < \frac{1}{3}$.
+
+Note that our analysis result is always the .95 credible interval as described in section~\ref{sec:byt}. We only use Bayes factor for the decision of early stopping. 
+
+\subsection{Savage-Dickey density ratio}
+Since the likelihood in Bayes factor involves an intractable integral over $\delta$, we use Savage-Dickey density ratio to compute Bayes factor in implementation. 
+
+For simplicity, we use subscripts 0 and 1 to denote the probability densities under hypothesis $H_0$ and $H_1$, respectively:
+\begin{align}
+\begin{split}
+BF_{01} = \frac{p_0(D)}{p_1(D)} = \frac{p_1(\delta=0 | D)}{p_1(\delta=0)}
+\end{split}
+\end{align}
+
+\emph{Proof}:
+
+Assume the model parameter falls into two categories $\theta = (\phi, \psi)$.
+
+$\phi$ are the parameters of interest for the hypothesis testing. In our model setup, our $\phi$ is $\delta$. We further assume under null hypothesis $\phi$ is set to a special fixed value $\phi = \phi_0$, whereas the alternative hypothesis places a distribution over $\phi$ --- the same setup in section~\ref{sec:byt}.
+
+$\psi$ are so-called nuisance parameters. We don't care about the value $\psi$ in the experiment. We introduce $\psi$ here only for the reason of deriving the formula of Savage-Dickey density ratio. \\
+
+Now assume that $p( \psi | \phi)$ does not depend on the model. Then if $\phi$ is continuous at $\phi_0$, 
+\begin{align}
+\begin{split}
+\lim_{\phi \rightarrow \phi_0} {p_1( \psi | \phi) = p_0(\psi | \phi_0)} 
+\end{split}
+\end{align}
+
+By setting $\phi = \phi_0$ for $H_1$, and $\phi = \phi_0$ by definition for $H_0$, we get a lemma:
+\begin{align}
+\begin{split}
+p_1( \psi | \phi = \phi_0) = p_0(\psi)
+\end{split}
+\end{align}
+
+The marginal likelihood over $\psi$ under $H_0$ is given by
+\begin{align}
+\begin{split}
+p_0(D) = \int \! p_0(D | \psi) p_0(\psi) \, \mathrm{d}\psi.
+\end{split}
+\end{align}
+
+Using the continuity condition and our lemma, this can be rewritten as
+\begin{align}
+\begin{split}
+p_0(D) = \int \! p_1(D | \psi, \phi=\phi_0) p_1(\psi | \phi = \phi_0) \, \mathrm{d}\psi.
+\end{split}
+\end{align}
+
+Note that the right-hand side of the equation above is a marginalization over $\psi$, thus $\psi$ disappears!
+\begin{align}
+\begin{split}
+p_0(D) = p_1(D | \phi = \phi_0)
+\end{split}
+\end{align}
+
+Finally, we apply Bayes' rule to get
+ \begin{align}
+\begin{split}
+p_0(D) = \frac{p_1(\phi = \phi_0 | D) p_1(D)}{p_1(\phi = \phi_0)} 
+\end{split}
+\end{align}
+
+Substituting $p_0(D)$ in the equation of Bayes factor
+\begin{align}
+\begin{split}
+BF_{01} = \frac{p(D|H_0)}{p(D|H_1)} =\frac{p_0(D)}{p_1(D)} = \frac{p_1(\phi = \phi_0 | D)}{p_1(\phi = \phi_0)}
+\end{split}
+\end{align}
+
+$\blacksquare$
+
+%----------------------------------------------------------------------------------------
+
+\end{document}
