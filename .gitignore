@@ -1,0 +1,11 @@
+.ipynb_checkpoints/
+*.log
+*.pyc
+*.pkl
+
+.Rhistory
+*.RData
+
+*.DS_Store
+*.gz
+*.aux
