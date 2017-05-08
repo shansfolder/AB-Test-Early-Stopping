@@ -97,3 +97,9 @@ limit the number of CPUs to 5 at the same time.
 - A/B tests at Airbnb
 
 > https://medium.com/airbnb-engineering/experiments-at-airbnb-e2db3abf39e7
+
+
+## Command to run simulation
+For example:
+
+```python3.6 simulate.py -c 4 -f bayes_factor -k normal_shifted -m /Users/shuang/PersWorkSpace/ABTestEarlyStopping/normal_kpi_template.stan --distribution cauchy --scale 1```

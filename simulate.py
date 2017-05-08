@@ -36,7 +36,7 @@ def generate_random_data(seed):
 							   'variant':np.random.choice(['A', 'B'], size=total_entities, p=[0.6, 0.4])})
 
 	all_data = pd.DataFrame()
-	for e in xrange(total_entities):
+	for e in range(total_entities):
 		#if (e%1000==0):
 		#	print(e)
 		n = int(rtpois(1,lam))
@@ -130,6 +130,8 @@ def bayes_factor(model_file, simulation_index, day_index, kpi, distribution, sca
 	Returns:
 		Bayes factor based on the Savage-Dickey density ratio
 	"""
+
+	print("simulation:"+ str(simulation_index) + ", day:" + str(day_index))
 	dat = generate_random_data(simulation_index)
 	df = get_snapshot(dat, day_index+1)
 
@@ -267,34 +269,34 @@ def run(func, cpus, **kwargs):
 	timestamp = '{:%Y%m%d}'.format(datetime.datetime.now())
 	if func.__name__ == 'bayes_factor':
 		results = Parallel(n_jobs=int(cpus)) (
-	                delayed(func)(kwargs['model_file'],s,d,kwargs['kpi'],kwargs['distribution'],kwargs['scale']) for s in xrange(sims) for d in xrange(days)
+	                delayed(func)(kwargs['model_file'],s,d,kwargs['kpi'],kwargs['distribution'],kwargs['scale']) for s in range(sims) for d in range(days)
 	            )
 		filename = func.__name__ + '/' + func.__name__ + '_' + kwargs['kpi'] + '_' + kwargs['distribution'] + '_' + str(kwargs['scale']) + '_' + timestamp + '.csv'
 	elif func.__name__ == 'hdi_rope':
 		stan_model = StanModel(file=kwargs['model_file']) 
 		results = Parallel(n_jobs=int(cpus)) (
-	                delayed(func)(stan_model,s,d,kwargs['kpi'],kwargs['rope_width'],kwargs['hdi_mass']) for s in xrange(sims) for d in xrange(days)
+	                delayed(func)(stan_model,s,d,kwargs['kpi'],kwargs['rope_width'],kwargs['hdi_mass']) for s in range(sims) for d in range(days)
 	            )
 		filename = func.__name__ + '/' + func.__name__ + '_' + kwargs['kpi'] + '_' + str(kwargs['rope_width']) + '_' + str(kwargs['hdi_mass']) + '.csv'
 	elif func.__name__ == 'precision':
 		stan_model = StanModel(file=kwargs['model_file']) 
 		results = Parallel(n_jobs=int(cpus)) (
-	                delayed(func)(stan_model,s,d,kwargs['kpi']) for s in xrange(sims) for d in xrange(days)
+	                delayed(func)(stan_model,s,d,kwargs['kpi']) for s in range(sims) for d in range(days)
 	            )
 		filename = func.__name__ + '/' + func.__name__ + '_' + kwargs['kpi'] + '_' + timestamp + '.csv'
 	elif func.__name__ == 'fixed_horizon':
 		results = Parallel(n_jobs=int(cpus)) (
-	                delayed(func)(s) for s in xrange(sims) 
+	                delayed(func)(s) for s in range(sims)
 	            )
 		filename = func.__name__ + '/' + func.__name__ + '_' + timestamp + '.csv'
 	elif func.__name__ == 'group_sequential':
 		results = Parallel(n_jobs=int(cpus)) (
-	                delayed(func)(s,d,kwargs['kpi']) for s in xrange(sims) for d in xrange(days)
+	                delayed(func)(s,d,kwargs['kpi']) for s in range(sims) for d in range(days)
 	            )
 		filename = func.__name__ + '/' + func.__name__ + '_' + kwargs['kpi'] + '_' + timestamp + '.csv'
 	elif func.__name__ == 'optional_stopping':
 		results = Parallel(n_jobs=int(cpus)) (
-	                delayed(func)(s,d) for s in xrange(sims) for d in xrange(days)
+	                delayed(func)(s,d) for s in range(sims) for d in range(days)
 	            )
 		filename = func.__name__ + '/' + func.__name__ + '_' + timestamp + '.csv'
 	else:
@@ -322,7 +324,7 @@ def simulate_single_run(i):
 def main():
 	#lambda/(1-exp(-lambda))*mu
 	results = Parallel(n_jobs=-1)(
-		delayed(simulate_single_run)(i) for i in xrange(sims)
+		delayed(simulate_single_run)(i) for i in range(sims)
 	)
 	with open('sim_results.csv', 'w') as file_handler:
 		out = csv.writer(file_handler)
