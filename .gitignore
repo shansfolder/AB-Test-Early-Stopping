@@ -9,3 +9,5 @@
 *.DS_Store
 *.gz
 *.aux
+
+*.idea
