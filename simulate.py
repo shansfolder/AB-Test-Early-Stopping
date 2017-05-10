@@ -2,7 +2,6 @@ from optparse import OptionParser
 import numpy as np
 import pandas as pd
 from pystan import StanModel
-# import seaborn as sns
 from joblib import Parallel, delayed
 from scipy.stats import gaussian_kde, cauchy, poisson, uniform, norm
 import datetime
@@ -13,13 +12,12 @@ from expan.core.experiment import Experiment
 
 metadata = {'source': 'simulation', 'experiment': 'random'}
 
-from pdb import set_trace
 
 sims = 1#000
 total_entities = 20000  # entity means e.g. person
 daily_entities = 2000
 days = 20
-delta = 0.04  # effect size
+delta = 0.04
 lam = 3
 
 

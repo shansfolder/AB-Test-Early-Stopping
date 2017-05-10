@@ -1,5 +1,6 @@
 # Evaluating Early Stopping Algorithm for A/B Testing
 This repository contains simulation scripts to evaluate different statistical approaches for optional stopping of A/B testing.
+Please run with python3.
 
 ## Simulation
 
