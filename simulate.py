@@ -37,11 +37,11 @@ def generate_random_data(seed):
 
     all_data = pd.DataFrame()
     for e in range(total_entities):
-        # if (e%1000==0):
-        #	print(e)
         n = int(rtpois(1, lam))
+        if n > days:
+            n = days
 
-        # a person visit several times in these days: tpoints
+        # an entity/person visit in these days: tpoints
         tpoints = np.random.choice(range(days), size=n, replace=False)
 
         normal_same_rv = norm.rvs(size=n, loc=0)
