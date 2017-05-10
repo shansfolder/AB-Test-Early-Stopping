@@ -1,9 +1,8 @@
 from optparse import OptionParser
 import numpy as np
-import pandas as pd
 from pystan import StanModel
 from joblib import Parallel, delayed
-from scipy.stats import gaussian_kde, cauchy, poisson, uniform, norm
+from scipy.stats import gaussian_kde, cauchy, norm
 import datetime
 import pickle
 import csv
@@ -19,47 +18,6 @@ daily_entities = 2000
 days = 20
 delta = 0.04
 lam = 3
-
-
-def rtpois(N, lam):
-    """
-	Generate zero-truncated Poisson random numbers.
-	"""
-    lower = poisson.pmf(0, lam)
-    return poisson.ppf(uniform.rvs(size=N, loc=lower, scale=1 - lower), lam)
-
-
-def generate_random_data(seed):
-    np.random.seed(seed)
-    assignment = pd.DataFrame({'entity': range(total_entities),'variant': np.random.choice(['A', 'B'], size=total_entities, p=[0.6, 0.4])})
-
-    all_data = pd.DataFrame()
-    for e in range(total_entities):
-        n = int(rtpois(1, lam))
-        if n > days:
-            n = days
-
-        # an entity/person visit in these days: tpoints
-        tpoints = np.random.choice(range(days), size=n, replace=False)
-
-        normal_same_rv = norm.rvs(size=n, loc=0)
-        normal_shifted_rv = norm.rvs(size=n, loc=0)
-        poisson_same_rv = poisson.rvs(size=n, mu=1)
-        # treatment variant
-        if assignment.variant[assignment.entity == e].iloc[0] == 'B':
-            normal_shifted_rv = norm.rvs(size=n, loc=delta)
-        df = pd.DataFrame({
-            'entity': e,
-            'normal_same': normal_same_rv,
-            'normal_shifted': normal_shifted_rv,
-            'poisson_same': poisson_same_rv,
-            'time': tpoints
-        })
-        all_data = all_data.append(df, ignore_index=True)
-
-    all_data = pd.merge(all_data, assignment, on='entity')
-    # print('Finished generating data!')
-    return all_data
 
 
 # dat = pd.read_csv('size39_sales_kpi_over_time.csv')
@@ -330,28 +288,6 @@ def run(func, cpus, **kwargs):
             out.writerow(item)
         # else:
         #	file_handler.write("{}\n".format(item))
-
-
-def simulate_single_run(i):
-    print(i)
-    dat = generate_random_data(i)
-    aggregated = dat.groupby(['variant', 'entity'], as_index=False).normal_shifted.sum()
-    summary = aggregated.groupby('variant', as_index=False).normal_shifted.mean()
-    return (
-    summary.normal_shifted[summary.variant == 'A'].iloc[0], summary.normal_shifted[summary.variant == 'B'].iloc[0])
-
-
-def main():
-    # lambda/(1-exp(-lambda))*mu
-    results = Parallel(n_jobs=-1)(
-        delayed(simulate_single_run)(i) for i in range(sims)
-    )
-    with open('sim_results.csv', 'w') as file_handler:
-        out = csv.writer(file_handler)
-        for row in results:
-            out.writerow(row)
-        # sns.distplot(delta_trace)
-        # sns.plt.show()
 
 
 if __name__ == "__main__":
