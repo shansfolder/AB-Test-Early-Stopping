@@ -1,5 +1,6 @@
 from optparse import OptionParser
 import numpy as np
+import pandas as pd
 from pystan import StanModel
 from joblib import Parallel, delayed
 from scipy.stats import gaussian_kde, cauchy, norm
@@ -27,6 +28,11 @@ def get_snapshot(dat, start_time):
     snapshot = dat[dat.time < start_time]
     aggregated = snapshot.groupby(['entity', 'variant']).mean().reset_index()
     return aggregated
+
+
+def readSimulationData(sim):
+    dat = pd.read_csv("simulation/simulation"+str(sim)+".csv")
+    return dat
 
 
 def HDI_from_MCMC(posterior_samples, credible_mass=0.95):
@@ -61,6 +67,8 @@ def fit_stan(sm, df, kpi):
                     'Nt': sum(df.variant == 'B'),
                     'x': df[kpi][df.variant == 'A'],
                     'y': df[kpi][df.variant == 'B']}
+
+    # TODO: fix binomial model
     elif 'binomial' in kpi:
         fit_data = {'Nc': sum(df.variant == 'A'),
                     'Nt': sum(df.variant == 'B'),
@@ -94,7 +102,7 @@ def bayes_factor(model_file, simulation_index, day_index, kpi, distribution, sca
 	"""
 
     print("simulation:" + str(simulation_index) + ", day:" + str(day_index))
-    dat = generate_random_data(simulation_index)
+    dat = readSimulationData(simulation_index)
     df = get_snapshot(dat, day_index + 1)
 
     with open(model_file, 'r') as myfile:
@@ -128,7 +136,7 @@ def hdi_rope(sm, simulation_index, day_index, kpi, rope_width, hdi_mass=0.95):
 	Returns:
 		whether HDI is inside, outside or overlaps with the predefined ROPE
 	"""
-    dat = generate_random_data(simulation_index)
+    dat = readSimulationData(simulation_index)
     df = get_snapshot(dat, day_index + 1)
     fit, delta_trace = fit_stan(sm, df, kpi)
     hdi = HDI_from_MCMC(delta_trace, hdi_mass)
@@ -145,7 +153,7 @@ def hdi_rope(sm, simulation_index, day_index, kpi, rope_width, hdi_mass=0.95):
 
 
 def precision(sm, simulation_index, day_index, kpi):
-    dat = generate_random_data(simulation_index)
+    dat = readSimulationData(simulation_index)
     df = get_snapshot(dat, day_index + 1)
     fit, traces = fit_stan(sm, df, kpi)
     hdi = HDI_from_MCMC(traces['delta'])
@@ -169,7 +177,7 @@ def fixed_horizon(i):
     """
 	Simulate the fixed horizon test for a single run.
 	"""
-    dat = generate_random_data(i)
+    dat = readSimulationData(i)
     # fixed-horizon
     kpi = get_snapshot(dat, days + 1)
     exp = Experiment('A', kpi, metadata)
@@ -184,7 +192,7 @@ def fixed_horizon(i):
 
 
 def optional_stopping(simulation_index, day_index):
-    dat = generate_random_data(simulation_index)
+    dat = readSimulationData(simulation_index)
     # diff = [True]*days
     # optional stopping
     kpi = get_snapshot(dat, day_index + 1)
@@ -210,7 +218,7 @@ def group_sequential(simulation_index, day_index, kpi_name):
     bounds = [8.000000, 8.000000, 8.000000, 4.915742, 4.336773, 3.942483, 3.638028, 3.394052, 3.193264, 3.024348,
               2.879692, 2.753971, 2.643399, 2.545164, 2.457130, 2.377652, 2.305414, 2.239395, 2.178743, 2.122766]
 
-    dat = generate_random_data(simulation_index)
+    dat = readSimulationData(simulation_index)
     kpi = get_snapshot(dat, day_index + 1)
     ctrl = kpi.loc[kpi.variant == 'A', kpi_name]
     treat = kpi.loc[kpi.variant == 'B', kpi_name]
