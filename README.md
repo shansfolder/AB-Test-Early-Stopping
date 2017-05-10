@@ -1,5 +1,5 @@
-# early-stopping
-Simulation scripts to evaluate different statistical approaches for optional stopping of the experiment
+# Evaluating Early Stopping Algorithm for A/B Testing
+This repository contains simulation scripts to evaluate different statistical approaches for optional stopping of A/B testing.
 
 ## Simulation
 
@@ -77,7 +77,6 @@ thus halts the whole program. The current solution is to change the environment
 variable `TMPDIR` to some local directory which does not have a space limit, and
 limit the number of CPUs to 5 at the same time.
 
-## Good reads on A/B testing
 - Statistical advice for A/B Testing
 
 > http://sl8r000.github.io/ab_testing_statistics/
