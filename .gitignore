@@ -11,3 +11,4 @@
 *.aux
 
 *.idea
+data/simulation/*

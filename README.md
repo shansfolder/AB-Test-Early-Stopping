@@ -102,4 +102,4 @@ limit the number of CPUs to 5 at the same time.
 ## Command to run simulation
 For example:
 
-```python3.6 simulate.py -c 4 -f bayes_factor -k normal_shifted -m /Users/shuang/PersWorkSpace/ABTestEarlyStopping/normal_kpi_template.stan --distribution cauchy --scale 1```
+```python3.6 simulate.py -c 4 -f bayes_factor -k normal_shifted -m /Users/shuang/PersWorkSpace/ABTestEarlyStopping/model/normal_kpi.stan```
