@@ -11,7 +11,7 @@ from expan.core.experiment import Experiment
 
 metadata = {'source': 'simulation', 'experiment': 'random'}
 
-sims = 1#000
+sims = 1000
 days = 20
 
 # dat = pd.read_csv('size39_sales_kpi_over_time.csv')
@@ -60,16 +60,6 @@ def fit_stan(sm, df, kpi):
                     'Nt': sum(df.variant == 'B'),
                     'x': df[kpi][df.variant == 'A'],
                     'y': df[kpi][df.variant == 'B']}
-
-    # TODO: fix binomial model
-    elif 'binomial' in kpi:
-        fit_data = {'Nc': sum(df.variant == 'A'),
-                    'Nt': sum(df.variant == 'B'),
-                    't_c': df['ARTICLES_ORDERED'][df.variant == 'hide'],
-                    't_t': df['ARTICLES_ORDERED'][df.variant == 'show'],
-                    's_c': df['ARTICLES_RETURNED'][df.variant == 'hide'].astype(int),
-                    's_t': df['ARTICLES_RETURNED'][df.variant == 'show'].astype(int)
-                    }
     else:
         raise NotImplementedError
 
@@ -223,4 +213,4 @@ if __name__ == "__main__":
     run(func,
         options.cpu,
         model_file=options.model_file,
-        kpi=options.kpi,)
+        kpi=options.kpi)

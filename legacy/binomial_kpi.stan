@@ -13,13 +13,8 @@ parameters {
 }
 
 transformed parameters {
-	real phi_c;
-	real phi_t;
 	real delta;
-	phi_c = inv_Phi(theta_c);
-	phi_t = inv_Phi(theta_t);
-	delta = phi_t - phi_c;
-	//delta = mu_alpha / sigma_alpha;
+	delta = theta_t - theta_c;
 }
 
 model {
