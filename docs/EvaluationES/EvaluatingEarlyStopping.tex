@@ -1,0 +1,165 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Short Sectioned Assignment
+% LaTeX Template
+% Version 1.0 (5/5/12)
+%
+% This template has been downloaded from:
+% http://www.LaTeXTemplates.com
+%
+% Original author:
+% Frits Wenneker (http://www.howtotex.com)
+%
+% License:
+% CC BY-NC-SA 3.0 (http://creativecommons.org/licenses/by-nc-sa/3.0/)
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%----------------------------------------------------------------------------------------
+%	PACKAGES AND OTHER DOCUMENT CONFIGURATIONS
+%----------------------------------------------------------------------------------------
+
+\documentclass[paper=a4, fontsize=11pt]{scrartcl} % A4 paper and 11pt font size
+
+\usepackage[T1]{fontenc} % Use 8-bit encoding that has 256 glyphs
+\usepackage{fourier} % Use the Adobe Utopia font for the document - comment this line to return to the LaTeX default
+\usepackage[english]{babel} % English language/hyphenation
+\usepackage{amsmath,amsfonts,amsthm} % Math packages
+
+\usepackage{lipsum} % Used for inserting dummy 'Lorem ipsum' text into the template
+\usepackage{bbding}
+\usepackage{multirow}
+
+\usepackage{sectsty} % Allows customizing section commands
+\allsectionsfont{\centering \normalfont\scshape} % Make all sections centered, the default font and small caps
+
+\usepackage{fancyhdr} % Custom headers and footers
+\pagestyle{fancyplain} % Makes all pages in the document conform to the custom headers and footers
+\fancyhead{} % No page header - if you want one, create it in the same way as the footers below
+\fancyfoot[L]{} % Empty left footer
+\fancyfoot[C]{} % Empty center footer
+\fancyfoot[R]{\thepage} % Page numbering for right footer
+\renewcommand{\headrulewidth}{0pt} % Remove header underlines
+\renewcommand{\footrulewidth}{0pt} % Remove footer underlines
+\setlength{\headheight}{13.6pt} % Customize the height of the header
+
+\numberwithin{equation}{section} % Number equations within sections (i.e. 1.1, 1.2, 2.1, 2.2 instead of 1, 2, 3, 4)
+\numberwithin{figure}{section} % Number figures within sections (i.e. 1.1, 1.2, 2.1, 2.2 instead of 1, 2, 3, 4)
+\numberwithin{table}{section} % Number tables within sections (i.e. 1.1, 1.2, 2.1, 2.2 instead of 1, 2, 3, 4)
+
+\setlength\parindent{0pt} % Removes all indentation from paragraphs - comment this line for an assignment with lots of text
+
+\usepackage{amsmath}
+
+%----------------------------------------------------------------------------------------
+%	TITLE SECTION
+%----------------------------------------------------------------------------------------
+
+\newcommand{\horrule}[1]{\rule{\linewidth}{#1}} % Create horizontal rule command with 1 argument of height
+
+\title{	
+\normalfont \normalsize 
+\textsc{} \\ [25pt] % Your university, school and/or department name(s)
+\horrule{0.5pt} \\[0.4cm] % Thin top horizontal rule
+\huge Evaluation of Early Stopping in A/B Testing  \\ % The assignment title
+\horrule{2pt} \\[0.5cm] % Thick bottom horizontal rule
+}
+
+\author{Shan Huang} % Your name
+
+\date{\normalsize\today} % Today's date or a custom date
+
+\begin{document}
+
+\maketitle % Print the title
+
+%----------------------------------------------------------------------------------------
+%	PROBLEM 1
+%----------------------------------------------------------------------------------------
+
+This documentation shows the evaluation of different early stopping algorithms. 
+
+\section{Problem}
+Given samples $\textbf{x}$ from treatment group, samples $\textbf{y}$ from control group, We are interested in whether there is a significant difference  between the mean the two variants $\delta = \mu(y)-\mu(x)$.
+
+To save the cost of long-running experiments, we want to stop early if we are already certain that there is a significant result.
+
+\section{Significance Analysis}
+\label{sec:byt}
+Given $H_0$ represents the null hypothesis of no difference, $H_1$ represents the alternative hypothesis meaning there is a difference, we can draw the conclusion of whether the result is statistically significant using either:
+
+\begin{itemize}  
+\item \textbf{Confidence interval}: If 0 is outside confidence interval of $\delta$, it is statistically significant. Vice versa.
+\item or \textbf{credible interval}: Credible interval is the Bayesian version of confidence interval. If 0 is outside credible interval of $\delta$, it is statistically significant. Vice versa.
+\item or \textbf{Bayes factor}: Bayes factors higher than 3 can be interpreted as support for the alternative hypothesis (significant difference), whereas values smaller than 1/3 can be interpreted as support for the null hypothesis (significant no difference). Values between 1/3 and 3 are inconclusive. 
+\end{itemize}
+
+The ability of each metric, i.e., types of significance it can detect, is shown in the following table.
+\begin{center}
+  \begin{tabular}{ | r | c | c | c | c | }
+    \hline
+    & paradigm & significant $H_1$ & significant $H_0$ & no significant result \\ \hline
+    \textbf{confidence interval} & frequentist &  \Checkmark &  & \Checkmark\\ \hline
+    \textbf{credible interval} & Bayesian & \Checkmark &  & \Checkmark\\ \hline
+    \textbf{Bayes factor} & Bayesian & \Checkmark & \Checkmark & \Checkmark\\
+    \hline
+  \end{tabular}
+\end{center}
+
+For simplicity, we draw a binary conclusion that either there is a significant difference or not. In other words, the first column means that there is a significant difference, combining the second and third column means that there is no significant difference.
+
+It is worth noting that a \textbf{typical conclusion of Bayes factor} would be "\emph{There is a significant difference corresponds to Cauchy prior and a threshold of Bayes factor=3}". This might be quite difficult to explain to non-tech users. While the \textbf{conclusion based on interval} can be more intuitive such as "\emph{You can be 95\% sure that the significant difference is not due to chance}".
+
+
+\section{Early Stopping Criteria}
+We can stop the experiment by either
+\begin{itemize}  
+\item \textbf{Confidence interval}: If 0 is outside confidence interval of $\delta$, stop. Calculate the significance level for each day based on group sequential method.
+\item or \textbf{credible interval}: If 0 is outside credible interval of $\delta$, stop.
+\item or \textbf{Bayes factor}: If Bayes factor is higher than 3 or smaller than 1/3, stop.
+\item or \textbf{Bayes precision}: If width of credible interval is smaller than 0.08, stop. 
+\end{itemize}
+
+
+\section{Evaluation}
+
+\subsection{Evaluate Significance Analysis}
+We are going to compare FP, TP, FN, TN for the three significance analysis algorithms described in section ~\ref{sec:byt}. 
+
+\subsection{Evaluate Early Stopping Criteria}
+It is obvious that if we use the frequentist approach in early stopping, we should also use confidence interval to make conclusion of significance. However, things get a bit more complicated in the Bayesian case. When using Bayes factor to stop, we often find a conflicting result if we draw significance based on credible interval. Find below a table of combination of early stopping algorithms and significance analysis algorithms we will evaluate on.
+
+\begin{center}
+  \begin{tabular}{ | r | c | c | c | c | }
+    \hline
+    \multirow{2}{*}{Significant Based On} & \multicolumn{4}{ |c| }{Early Stopping Based On} \\ \cline{2-5}
+    & Confidence Interval & Credible Interval & Bayes factor & Bayes precision \\ \hline
+    Confidence Interval & \Checkmark & &  &  \\ \hline
+    Credible Interval &  & \Checkmark &  &  \\ \hline
+    Bayes factor &  & & \Checkmark & \Checkmark \\ \hline
+  \end{tabular}
+\end{center}
+
+For each combination shown in the table above, we will evaluate the following metrics:
+\begin{itemize}  
+\item \textbf{False positive rate}: Percentage of wrongly stopped experiment. i.e., Early stop says there is a significant difference and stops the experiment, but a regular test will tell you not significant when the sample size is reached.
+\item \textbf{Run time reduced}: Average run time reduced for the correctly stopped experiment.
+\item \textbf{Bias}: Percentage of the difference of effect size (delta/std).
+\item \textbf{False positive run time reduced}: Average run time reduced for the wrongly stopped experiment.
+\end{itemize}
+
+\section{Result}
+
+\subsection{Simulation Data}
+We generate 2000 simulation tests based on Gaussian distributed KPIs. We calculate the minimal detectable effect size calculated from power analysis. 1000 tests should have a significant difference between control and treatment, and the other 1000 tests should have no significant difference. 
+
+We simulate the A/B testing for a period of 20 days, where the frequency of the visit from an entity is modelled by a Poisson distribution with visits on 3 days per entity in average. We run an analysis and evaluate whether to stop on each day.
+
+\subsection{Real Data}
+Use real data from previous A/B testings.
+
+\section{Conclusion}
+Use group sequential and confidence interval.
+
+%----------------------------------------------------------------------------------------
+
+\end{document}
