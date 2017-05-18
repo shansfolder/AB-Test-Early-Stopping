@@ -7,7 +7,7 @@ data {
 
 parameters {
 	real mu;			// population mean
-	real<lower=0> sigma;// population variance
+	real<lower=0> sigma;// population std
 	real delta;
 }
 

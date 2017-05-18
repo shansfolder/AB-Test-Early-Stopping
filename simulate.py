@@ -3,19 +3,14 @@ import numpy as np
 import pandas as pd
 from pystan import StanModel
 from joblib import Parallel, delayed
+from scipy import stats
 from scipy.stats import gaussian_kde, cauchy
 import datetime
 import csv
 import os
-from expan.core.experiment import Experiment
-
-metadata = {'source': 'simulation', 'experiment': 'random'}
 
 sims = 1000
 days = 20
-
-# dat = pd.read_csv('size39_sales_kpi_over_time.csv')
-# dat = generate_random_data()
 
 def get_snapshot(dat, start_time):
     snapshot = dat[dat.time < start_time]
@@ -26,6 +21,67 @@ def get_snapshot(dat, start_time):
 def readSimulationData(sim):
     dat = pd.read_csv("data/simulation/simulation" + str(sim) + ".csv")
     return dat
+
+
+def pooled_std(std1, n1, std2, n2):
+    """
+    Returns the pooled estimate of standard deviation. Assumes that population
+    variances are equal (std(v1)**2==std(v2)**2) - this assumption is checked
+    for reasonableness and an exception is raised if this is strongly violated.
+    Args:
+        std1 (float): standard deviation of first sample
+        n1 (integer): size of first sample
+        std2 (float): standard deviation of second sample
+        n2 (integer): size of second sample
+    Returns:
+        float: Pooled standard deviation
+    For further information visit:
+        http://sphweb.bumc.bu.edu/otlt/MPH-Modules/BS/BS704_Confidence_Intervals/BS704_Confidence_Intervals5.html
+    Todo:
+        Also implement a version for unequal variances.
+    """
+    return np.sqrt(((n1 - 1) * std1 ** 2 + (n2 - 1) * std2 ** 2) / (n1 + n2 - 2))
+
+
+def normal_difference(mean1, std1, n1, mean2, std2, n2, percentiles=[2.5, 97.5],
+                      relative=False):
+    """
+    Calculates the difference distribution of two normal distributions.
+    Computation is done in form of treatment minus control. It is assumed that
+    the standard deviations of both distributions do not differ too much.
+    Args:
+        mean1 (float): mean value of the treatment distribution
+        std1 (float): standard deviation of the treatment distribution
+        n1 (integer): number of samples of the treatment distribution
+        mean2 (float): mean value of the control distribution
+        std2 (float): standard deviation of the control distribution
+        n2 (integer): number of samples of the control distribution
+        percentiles (list): list of percentile values to compute
+        relative (boolean): If relative==True, then the values will be returned
+            as distances below and above the mean, respectively, rather than the
+            absolute values. In	this case, the interval is mean-ret_val[0] to
+            mean+ret_val[1]. This is more useful in many situations because it
+            corresponds with the sem() and std() functions.
+    Returns:
+        dict: percentiles and corresponding values
+    For further information vistit:
+            http://sphweb.bumc.bu.edu/otlt/MPH-Modules/BS/BS704_Confidence_Intervals/BS704_Confidence_Intervals5.html
+    """
+    # Compute combined parameters from individual parameters
+    mean = mean1 - mean2
+    std = pooled_std(std1, n1, std2, n2)
+    # Computing standard error
+    st_error = std * np.sqrt(1. / n1 + 1. / n2)
+    # Computing degrees of freedom
+    d_free = n1 + n2 - 2
+
+    # Mapping percentiles via standard error
+    if relative:
+        return list([(p, stats.t.ppf(p / 100.0, df=d_free) * st_error)
+                     for p in percentiles])
+    else:
+        return list([(p, mean + stats.t.ppf(p / 100.0, df=d_free) * st_error)
+                     for p in percentiles])
 
 
 def HDI_from_MCMC(posterior_samples, credible_mass=0.95):
@@ -88,38 +144,44 @@ def bayes_factor(stan_model, simulation_index, day_index, kpi):
     fit, traces = fit_stan(stan_model, df, kpi)
     kde = gaussian_kde(traces['delta'])
     hdi = HDI_from_MCMC(traces['delta'])
-    hdi_width = hdi[1] - hdi[0]
-
+    upper = hdi[1]
+    lower = hdi[0]
     prior = cauchy.pdf(0, loc=0, scale=1)
+
+    bf_01 = kde.evaluate(0)[0]/prior
+    hdi_width = upper - lower
+    mean_delta = np.mean(traces['delta'])
+
+    stop_bf = bf_01 > 3 or bf_01 < 1/3.
+    stop_bp = hdi_width < 0.08
+    significant_based_on_interval = 0 < lower or 0 > upper
+
     return (simulation_index,
             day_index,
-            kde.evaluate(0)[0] / prior,
+            bf_01,
+            stop_bf,
             hdi_width,
-            np.mean(traces['delta']))
-
-
-def fixed_horizon(i):
-    """
-    Simulate the fixed horizon test for a single run.
-    """
-    dat = readSimulationData(i)
-    # fixed-horizon
-    kpi = get_snapshot(dat, days + 1)
-    exp = Experiment('A', kpi, metadata)
-    res = exp.delta(kpi_subset=['normal_same'])
-    interval = res.statistic('delta', 'uplift_pctile', 'normal_same').loc[:, ('value', 'B')]
-    if np.sign(interval[0]) * np.sign(interval[1]) > 0:
-        diff = True
-    else:
-        diff = False
-
-    return (interval[0], interval[1], diff)
+            stop_bp,
+            mean_delta,
+            lower,
+            upper,
+            significant_based_on_interval)
 
 
 def group_sequential(simulation_index, day_index, kpi_name):
-    # calculated with bounds(seq(0.05,1,length=20),iuse=c(1,1),alpha=c(0.025,0.025)) in R
-    bounds = [8.000000, 8.000000, 8.000000, 4.915742, 4.336773, 3.942483, 3.638028, 3.394052, 3.193264, 3.024348,
-              2.879692, 2.753971, 2.643399, 2.545164, 2.457130, 2.377652, 2.305414, 2.239395, 2.178743, 2.122766]
+    # calculated via obrien_fleming in ExpAn
+
+    alpha_new = [0.0, 5.7203197734168043e-10, 4.1792768579185235e-07, 1.1726446842441618e-05,
+                 8.8575438321303324e-05, 0.00034571958016904603, 0.00092319528256634698, 0.0019419129967408466,
+                 0.0034807996724293133, 0.005574596680784305, 0.0082219970554116006, 0.011396418465313252,
+                 0.015055713300509366, 0.019149643385582893, 0.023625121317601305, 0.028429630753072699,
+                 0.033513300693990944, 0.038830043164523653, 0.044338067953992866, 0.050000000000000044]
+
+    bounds = [8.0, 6.1979502959916175, 5.0606052474987155, 4.3826127028843844,
+              3.9199279690803821, 3.5783882874343131, 3.3129438012973726, 3.0989751615228083,
+              2.9217418019219434, 2.7718076486993621, 2.6428148976196288, 2.5303026237633186,
+              2.4310361262683289, 2.3426050275873065, 2.263171468152342, 2.1913063514414541,
+              2.1258794223717579, 2.0659834410152067, 2.0108806190046566, 1.959963984540054]
 
     dat = readSimulationData(simulation_index)
     kpi = get_snapshot(dat, day_index + 1)
@@ -134,11 +196,20 @@ def group_sequential(simulation_index, day_index, kpi_name):
     z = (mu_t - mu_c) / np.sqrt(sigma_c ** 2 / n_c + sigma_t ** 2 / n_t)
 
     if z > bounds[day_index] or z < -bounds[day_index]:
-        diff = True
+        stop = True
     else:
-        diff = False
+        stop = False
 
-    return (simulation_index, day_index, diff, mu_t - mu_c)
+    mean_delta = mu_t - mu_c
+
+    interval = normal_difference(mu_c, sigma_c, n_c, mu_t, sigma_t, n_t,
+                                       [alpha_new[day_index] * 100 / 2, 100 - alpha_new[day_index] * 100 / 2])
+
+    lower = interval[0][1]
+    upper = interval[1][1]
+    significant_based_on_interval = 0<lower or 0>upper
+
+    return (simulation_index, day_index, stop, mean_delta, significant_based_on_interval)
 
 
 def run(func, cpus, **kwargs):
@@ -162,11 +233,7 @@ def run(func, cpus, **kwargs):
         end_time_bf = datetime.datetime.now()
         bf_time_used = end_time_bf - start_time_bf
         print("Bayes factor time spent in seconds:" + str(bf_time_used.seconds))
-    elif func.__name__ == 'fixed_horizon':
-        results = Parallel(n_jobs=int(cpus))(
-            delayed(func)(s) for s in range(sims)
-        )
-        filename = func.__name__ + '/' + func.__name__ + '_' + timestamp + '.csv'
+
     elif func.__name__ == 'group_sequential':
         results = Parallel(n_jobs=int(cpus))(
             delayed(func)(s,
@@ -175,6 +242,7 @@ def run(func, cpus, **kwargs):
             for s in range(sims) for d in range(days)
         )
         filename = func.__name__ + '/' + func.__name__ + '_' + kwargs['kpi'] + '_' + timestamp + '.csv'
+
     else:
         raise NotImplementedError
 
@@ -191,6 +259,7 @@ def run(func, cpus, **kwargs):
         out = csv.writer(file_handler)
         for item in results:
             out.writerow(item)
+
 
 
 if __name__ == "__main__":

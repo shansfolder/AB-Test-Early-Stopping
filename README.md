@@ -98,8 +98,15 @@ limit the number of CPUs to 5 at the same time.
 
 > https://medium.com/airbnb-engineering/experiments-at-airbnb-e2db3abf39e7
 
+- Dance of Bayes factors
+
+> http://daniellakens.blogspot.de/2016/07/dance-of-bayes-factors.html
+
 
 ## Command to run simulation
 For example:
 
 ```python3.6 simulate.py -c 4 -f bayes_factor -k normal_shifted -m /Users/shuang/PersWorkSpace/ABTestEarlyStopping/model/normal_kpi.stan```
+
+or
+```python3.6 simulate.py -c 4 -f group_sequential -k normal_shifted```
