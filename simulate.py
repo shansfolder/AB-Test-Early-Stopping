@@ -152,14 +152,14 @@ def bayes_factor(stan_model, simulation_index, day_index, kpi):
     hdi_width = upper - lower
     mean_delta = np.mean(traces['delta'])
 
-    stop_bf = bf_01 > 3 or bf_01 < 1/3.
+    significant_and_stop_bf = bf_01 < 1/3.
     stop_bp = hdi_width < 0.08
     significant_based_on_interval = 0 < lower or 0 > upper
 
     return (simulation_index,
             day_index,
             bf_01,
-            stop_bf,
+            significant_and_stop_bf,
             hdi_width,
             stop_bp,
             mean_delta,

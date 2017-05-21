@@ -91,7 +91,7 @@ Given $H_0$ represents the null hypothesis of no difference, $H_1$ represents th
 \begin{itemize}  
 \item \textbf{Confidence interval}: If 0 is outside confidence interval of $\delta$, it is statistically significant. Vice versa.
 \item or \textbf{credible interval}: Credible interval is the Bayesian version of confidence interval. If 0 is outside credible interval of $\delta$, it is statistically significant. Vice versa.
-\item or \textbf{Bayes factor}: Bayes factors higher than 3 can be interpreted as support for the alternative hypothesis (significant difference), whereas values smaller than 1/3 can be interpreted as support for the null hypothesis (significant no difference). Values between 1/3 and 3 are inconclusive. 
+\item or \textbf{Bayes factor}: Theoretically, Bayes factors higher than 3 can be interpreted as support for the null hypothesis (significant no difference), whereas values smaller than 1/3 can be interpreted as support for the alternative hypothesis (significant difference). Values between 1/3 and 3 are inconclusive. \textbf{In our test, we will only use Bayes factor less than 1/3 as decision criteria}. See reasons below.
 \end{itemize}
 
 The ability of each metric, i.e., types of significance it can detect, is shown in the following table.
@@ -107,7 +107,7 @@ The ability of each metric, i.e., types of significance it can detect, is shown 
 \captionof{table}{Comparison of Decision Ability}
 \end{center}
 
-For simplicity, we draw a binary conclusion that either there is a significant difference or not. In other words, the first column means that there is a significant difference, combining the second and third column means that there is no significant difference.
+To be consistent with all mehods, we draw a binary conclusion that either there is a significant difference or not. In other words, the first column means that there is a significant difference, combining the second and third column means that there is no significant difference. Thus, we only use the part where Bayes factor less than 1/3 as decision criteria.
 
 It is worth noting that a \textbf{typical conclusion of Bayes factor} would be "\emph{There is a significant difference corresponds to Cauchy prior and a threshold of Bayes factor=3}". This might be quite difficult to explain to non-tech users. While the \textbf{conclusion based on interval} can be more intuitive such as "\emph{You can be 95\% sure that the significant difference is not due to chance}".
 
@@ -117,7 +117,7 @@ We can stop the experiment by either
 \begin{itemize}  
 \item \textbf{Confidence interval}: Calculate the new significance level for each day based on alpha-spending function in group sequential method. Stop the test If 0 is outside confidence interval of $\delta$. 
 \item or \textbf{credible interval}: Stop the test if 0 is outside credible interval of $\delta$.
-\item or \textbf{Bayes factor}: Stop the test if Bayes factor is higher than 3 or smaller than 1/3.
+\item or \textbf{Bayes factor}: Stop the test if Bayes factor is smaller than 1/3 (significant difference).
 \item or \textbf{Bayes precision}: Stop the test if credible interval width is smaller than 0.08. 
 \end{itemize}
 
@@ -160,8 +160,8 @@ First of all, let's see the performance of different significance decision algor
 \begin{center}
   \begin{tabular}{ | r | c | c | c | c | }
     \hline
-    & FPR & FNR & TPR & TNR\\ \hline
-    \textbf{confidence interval} &  &   &  & \\ \hline
+    & FPR & TNR & FNR & TPR \\ \hline
+    \textbf{confidence interval} & 4.6\% & 95.4\%  & 0.9\% & 99.1\% \\ \hline
     \textbf{credible interval} &  &  &  & \\ \hline
     \textbf{Bayes factor} &  &  & & \\
     \hline

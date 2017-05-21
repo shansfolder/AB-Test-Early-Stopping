@@ -110,6 +110,6 @@ if __name__ == "__main__":
     effectSizeBinomial = effectSizeBinomial()
     print("min effect size (difference of conversion rate) of simulated binomial kpi:", effectSizeBinomial)
 
-    # for sim in range(sims):
-    #     data = generate_random_data(sim)
-    #     saveAsFile("simulation/simulation"+str(sim)+".csv", data)
+    for sim in range(sims):
+        data = generate_random_data(sim)
+        saveAsFile("simulation/simulation"+str(sim)+".csv", data)

@@ -1,3 +1,4 @@
+test_idx,day_idx,stop,mean_delta,significant
 0,0,False,0.0126687291092,False
 0,1,False,0.0389544383563,False
 0,2,False,0.0189033289521,False
