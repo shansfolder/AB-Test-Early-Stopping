@@ -30,6 +30,7 @@
 \usepackage{multirow}
 \usepackage{caption}
 \usepackage{graphicx}
+\usepackage{hyperref}
 
 \usepackage{sectsty} % Allows customizing section commands
 \allsectionsfont{\centering \normalfont\scshape} % Make all sections centered, the default font and small caps
@@ -78,7 +79,7 @@
 %	PROBLEM 1
 %----------------------------------------------------------------------------------------
 
-This documentation shows the evaluation of different early stopping algorithms. 
+This documentation shows the evaluation of early stopping algorithms. 
 
 \section{Problem}
 Given samples $\textbf{x}$ from treatment group, samples $\textbf{y}$ from control group, We are interested in whether there is a significant difference  between the mean the two variants $\delta = \mu(y)-\mu(x)$.
@@ -99,9 +100,9 @@ The ability of each metric, i.e., types of significance it can detect, is shown 
 \begin{center}
   \begin{tabular}{ | r | c | c | c | c | }
     \hline
-    & paradigm & significant $H_1$ & significant $H_0$ & no significant result \\ \hline
-    \textbf{confidence interval} & frequentist &  \Checkmark &  & \Checkmark\\ \hline
-    \textbf{credible interval} & Bayesian & \Checkmark &  & \Checkmark\\ \hline
+    & Paradigm & Significant $H_1$ & Significant $H_0$ & No Significant Result \\ \hline
+    \textbf{Confidence Interval} & frequentist &  \Checkmark &  & \Checkmark\\ \hline
+    \textbf{Credible Interval} & Bayesian & \Checkmark &  & \Checkmark\\ \hline
     \textbf{Bayes factor} & Bayesian & \Checkmark & \Checkmark & \Checkmark\\
     \hline
   \end{tabular}
@@ -126,9 +127,10 @@ We can stop the experiment by either
 \section{Evaluation}
 
 \subsection{Evaluate Significance Decision}
-We are going to compute FP(Type I error), FN(Type II error), TP, TN rates for the three significance decision algorithms described in section ~\ref{sec:byt}.
+We are going to compute FP(Type I error), FN(Type II error), TP, TN rates for the three significance decision algorithms described in Section ~\ref{sec:byt}.
 
 \subsection{Evaluate Early Stopping Criteria}
+\label{sec:esc}
 It is obvious that if we use the frequentist approach in early stopping, we should also use frequentist's approach (that is confidence interval) to decide significance. Moreover, when using Bayes factor to stop, we often find a conflicting result if we draw significance conclusion based on credible interval. Therefore we don't evaluate all combinations of early stopping algorithms and significance decision algorithms, find below a table of combination we will evaluate.
 
 \begin{center}
@@ -145,12 +147,15 @@ It is obvious that if we use the frequentist approach in early stopping, we shou
 
 For each combination shown in the table above, we will evaluate the following metrics:
 \begin{itemize}  
-\item \textbf{False positive rate}: Percentage of wrongly stopped tests. i.e., Early stop says there is a significant difference and stops the test, but the test to the end day (as if there is no early stopping) will tell you it is not significant .
-\item \textbf{Run time reduced}: Percentage of run time reduced for the correctly stopped tests.
+\item \textbf{False positive rate}: Percentage of wrongly stopped tests. i.e., Early stop says there is a significant difference and stops the test, but the test to the end day (as if there is no early stopping) will tell you it is not significant.
+\item \textbf{Run time reduced(all)}: Percentage of run time reduced for all tests.
+\item \textbf{Run time reduced(true positive)}: Percentage of run time reduced for only the correctly stopped tests.
 \item \textbf{Bias}: Percentage of the difference of effect size(delta) between stopping day and end day of test(as if there is no early stopping).
 \end{itemize}
 
-\section{Result}
+\section{Evaluation}
+
+The evaluation is conducted on both simulation data and real data. Code can be found \href{https://github.com/shansfolder/ABTestingEarlyStoppingEvaluation}{\underline{here}}.
 
 \subsection{Simulation Data}
 We generate 2000 simulation tests based on Gaussian distributed KPIs. We calculate the minimal detectable effect size from power analysis. 1000 tests have a significant difference between control and treatment, and the other 1000 tests have no significant difference. 
@@ -170,10 +175,7 @@ First of all, let's see the performance of different \textbf{significance decisi
 \captionof{table}{Performance of Significance Decision on Simulation Data}
 \end{center}
 
-We can observe in Figure \ref{fig:roc_sim_data} that Bayes factor works very good on false positive rate, but the two interval based approaches works better on true positive rate. In general, the error rate of all three methods are acceptable using simulation data (FPR < 5\% and FNR < 80\%). 
-
-
-Next, let's evaluate \textbf{early stopping} algorithms.
+We can observe in Figure \ref{fig:roc_sim_data} that Bayes factor works very good on false positive rate, but the two interval based approaches works better on true positive rate. In general, the error rate of all three methods are acceptable(FPR < 5\% and FNR < 80\%) for simulation data. 
 
 \begin{figure} 
 \centering
@@ -182,10 +184,26 @@ Next, let's evaluate \textbf{early stopping} algorithms.
 \label{fig:roc_sim_data}
 \end{figure}
 
+Next, let's look at the results of \textbf{early stopping} algorithms. To make notations compact, in the following table we use FPR for false positive rate, RTR(all) for run time reduced(all), RTR(TP) for run time reduced(true positive) and CI for confidence interval. The definition of each metric is described previously in Section ~\ref{sec:esc}.
+
+\begin{center}
+  \begin{tabular}{ | r | r | c | c | c | c | c | }
+    \hline
+    \textbf{Significance} & \textbf{Early Stopping}  & \textbf{Paradigm} & \textbf{FPR} & \textbf{RTR(all)} & \textbf{RTR(TP)} & \textbf{Bias} \\ \hline\hline
+    CI &  CI & frequentist & & &  &  \\ \hline
+    Credible Interval & Credible Interval & Bayesian &  & &  &  \\ \hline
+    Bayes factor & Bayes factor & Bayesian & & &  &  \\ \hline
+    Bayes factor & Bayes precision & Bayesian &  & &  &  \\ \hline
+  \end{tabular}
+\captionof{table}{Performance of Early Stopping on Simulation Data}
+\end{center}
+
+
 \subsection{Real Data}
-Use real data from previous A/B testings.
+Repeat the evaluation process on real data from previous A/B testings.
 
 \section{Conclusion}
+Choose a significance decision and an early stopping algorithm.
 %Use group sequential and confidence interval.
 
 %----------------------------------------------------------------------------------------
