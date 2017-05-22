@@ -29,6 +29,7 @@
 \usepackage{bbding}
 \usepackage{multirow}
 \usepackage{caption}
+\usepackage{graphicx}
 
 \usepackage{sectsty} % Allows customizing section commands
 \allsectionsfont{\centering \normalfont\scshape} % Make all sections centered, the default font and small caps
@@ -156,25 +157,36 @@ We generate 2000 simulation tests based on Gaussian distributed KPIs. We calcula
 
 We model the frequency of visits of an entity by a Poisson distribution with 3 days per entity in average. We simulate the A/B testing for a period of 20 days, and decide whether to stop on each day.
 
-First of all, let's see the performance of different significance decision algorithms.
+First of all, let's see the performance of different \textbf{significance decision} algorithms.
 \begin{center}
   \begin{tabular}{ | r | c | c | c | c | }
     \hline
     & FPR & TNR & FNR & TPR \\ \hline
-    \textbf{confidence interval} & 4.6\% & 95.4\%  & 0.9\% & 99.1\% \\ \hline
-    \textbf{credible interval} &  &  &  & \\ \hline
-    \textbf{Bayes factor} &  &  & & \\
+    \textbf{confidence interval} & 4.6\% & 95.4\% & 0.9\% & 99.1\% \\ \hline
+    \textbf{credible interval} & 4.6\% & 95.4\% & 1.0\% & 99.0\% \\ \hline
+    \textbf{Bayes factor} & 0.2\% & 99.8\% & 18.9\% & 81.1\%\\
     \hline
   \end{tabular}
 \captionof{table}{Performance of Significance Decision on Simulation Data}
 \end{center}
 
+We can observe in Figure \ref{fig:roc_sim_data} that Bayes factor works very good on false positive rate, but the two interval based approaches works better on true positive rate. In general, the error rate of all three methods are acceptable using simulation data (FPR < 5\% and FNR < 80\%). 
+
+
+Next, let's evaluate \textbf{early stopping} algorithms.
+
+\begin{figure} 
+\centering
+\includegraphics[scale=.6]{roc_sim_data.png}
+\caption{ROC plot on simulation data}
+\label{fig:roc_sim_data}
+\end{figure}
 
 \subsection{Real Data}
 Use real data from previous A/B testings.
 
 \section{Conclusion}
-Use group sequential and confidence interval.
+%Use group sequential and confidence interval.
 
 %----------------------------------------------------------------------------------------
 
