@@ -21,11 +21,13 @@ positive rate over time
 
 ## Bayesian
 
-#Open questions
+Open questions
+----
 - While controlling the false positive rate, one should also check the power of alternative methods.
 - Compare with the outcome of the `BayesFactor` package.
 
-#Literature
+Literature
+-----
 - blog post
 
 > Defazio HOW TO DO A/B TESTING WITH EARLY STOPPING CORRECTLY? 2016
