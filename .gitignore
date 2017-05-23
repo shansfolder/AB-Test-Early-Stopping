@@ -9,6 +9,7 @@
 *.DS_Store
 *.gz
 *.aux
+*.out
 
 *.idea
 data/simulation/*
