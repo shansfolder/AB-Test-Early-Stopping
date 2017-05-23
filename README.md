@@ -2,7 +2,8 @@
 This repository contains simulation scripts to evaluate different statistical approaches for optional stopping of A/B testing.
 Please run with python3.
 
-## Frequentist
+Frequentist
+=============
 
 - Wald's SPRT test based on testing a single point hypothesis against another 
 point hypothesis, possible workaround:
@@ -19,7 +20,8 @@ positive rate over time
 
 > Review: Sebille et al. Sequential methods and group sequential designs for comparative clinical trials. 2003
 
-## Bayesian
+Bayesian
+=============
 
 Open questions
 ----
@@ -45,7 +47,8 @@ Literature
 > Kruschke Bayesian assessment of null values via parameter estimation and model comparison. Perspectives on Psych Sci 2011
 
 
-## Good reads
+Good reads
+=============
 - Make libraries in the virtualenv available in the jupyter notebook
 
 > http://help.pythonanywhere.com/pages/IPythonNotebookVirtualenvs
@@ -101,7 +104,8 @@ limit the number of CPUs to 5 at the same time.
 > http://daniellakens.blogspot.de/2016/07/dance-of-bayes-factors.html
 
 
-## Command to run simulation
+Run simulation
+=============
 For example:
 
 ```python3.6 simulate.py -c 4 -f bayes_factor -k normal_shifted -m /Users/shuang/PersWorkSpace/ABTestEarlyStopping/model/normal_kpi.stan```
