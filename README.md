@@ -2,11 +2,6 @@
 This repository contains simulation scripts to evaluate different statistical approaches for optional stopping of A/B testing.
 Please run with python3.
 
-## Simulation
-
-Results of Bayes factors are saved in a `csv` as a column vector, where the 
-inner loop is the number of days and the outer loop is the number of simulations.
-
 ## Frequentist
 
 - Wald's SPRT test based on testing a single point hypothesis against another 
@@ -26,11 +21,11 @@ positive rate over time
 
 ## Bayesian
 
-## Open questions
+#Open questions
 - While controlling the false positive rate, one should also check the power of alternative methods.
 - Compare with the outcome of the `BayesFactor` package.
 
-## Literature
+#Literature
 - blog post
 
 > Defazio HOW TO DO A/B TESTING WITH EARLY STOPPING CORRECTLY? 2016
@@ -47,7 +42,8 @@ positive rate over time
 
 > Kruschke Bayesian assessment of null values via parameter estimation and model comparison. Perspectives on Psych Sci 2011
 
-## Misc
+
+## Good reads
 - Make libraries in the virtualenv available in the jupyter notebook
 
 > http://help.pythonanywhere.com/pages/IPythonNotebookVirtualenvs
