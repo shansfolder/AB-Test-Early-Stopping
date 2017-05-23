@@ -79,7 +79,7 @@
 %	PROBLEM 1
 %----------------------------------------------------------------------------------------
 
-This documentation shows the evaluation of early stopping algorithms. 
+This documentation presents the evaluation of early stopping algorithms. 
 
 \section{Problem}
 Given samples $\textbf{x}$ from treatment group, samples $\textbf{y}$ from control group, we want to know whether there is a significant difference between the means $\delta = \mu(y)-\mu(x)$.
@@ -111,15 +111,15 @@ Given the null hypothesis $H_0$ representing no difference, the alternative hypo
 
 To be consistent with all mehods, we draw a binary conclusion that either there is a significant difference or not. In other words, the first column means that there is a significant difference, combining the second and third column means that there is no significant difference. Thus, we only use the part where Bayes factor less than 1/3 as decision criteria.
 
-It is worth noting that a \textbf{typical conclusion of Bayes factor} would be "\emph{There is a significant difference corresponds to Cauchy prior and a threshold of Bayes factor=3}". This might be quite difficult to explain to non-tech users. While the \textbf{conclusion based on interval} can be more intuitive such as "\emph{You can be 95\% sure that the significant difference is not due to chance}".
+It is worth noting that a \textbf{typical conclusion of Bayes factor} would be for instance "\emph{There is a significant difference corresponds to Cauchy prior and a threshold of Bayes factor=3}". This might be quite difficult to explain to non-tech users. On the other hand, a \textbf{conclusion based on interval} can be more intuitive such as "\emph{You can be 95\% sure that the significant difference is not due to chance}".
 
 
 \section{Early Stopping Criteria}
 We can stop the experiment by either
 \begin{itemize}  
-\item \textbf{Confidence interval}: Calculate the new significance level for each day based on alpha-spending function in group sequential method. Stop the test If 0 is outside confidence interval of $\delta$. 
+\item \textbf{Confidence interval}: Calculate the new significance level for each day based on alpha-spending function in group sequential method. Use new significance level to compute confidence interval. Stop the test if 0 is outside confidence interval of $\delta$. 
 \item or \textbf{credible interval}: Stop the test if 0 is outside credible interval of $\delta$.
-\item or \textbf{Bayes factor}: Stop the test if Bayes factor is smaller than 1/3 (significant difference).
+\item or \textbf{Bayes factor}: Stop the test if Bayes factor is smaller than 1/3.
 \item or \textbf{Bayes precision}: Stop the test if credible interval width is smaller than 0.08. 
 \end{itemize}
 
@@ -131,7 +131,7 @@ We are going to compare false positive(type I error), false negative(type II err
 
 \subsection{Evaluate Early Stopping Criteria}
 \label{sec:esc}
-It is obvious that if we use the frequentist approach in early stopping, we should also use frequentist's approach (that is confidence interval) to decide significance. Moreover, when using Bayes factor to stop, we often find a conflicting result if we draw significance conclusion based on credible interval. Therefore we don't evaluate all combinations of early stopping algorithms and significance decision algorithms, find below a table of combination we will evaluate.
+It is obvious that if we use frequentist's approach(in our case is confidence interval) for early stopping, we should also use frequentist's approach for significance decision. On the other hand, when using Bayes factor for early stopping, we find a conflicting result if we draw significance conclusion based on credible interval. Therefore we don't evaluate all combinations of early stopping algorithms and significance decisions, find below a table of combination we evaluated on.
 
 \begin{center}
   \begin{tabular}{ | r | c | c | c | c | }
@@ -145,12 +145,12 @@ It is obvious that if we use the frequentist approach in early stopping, we shou
 \captionof{table}{Combinations of Early Stopping and Significance Decision To Evaluate}
 \end{center}
 
-For each combination shown in the table above, we will evaluate the following metrics:
+For each combination shown in the table above, we compute the following metrics:
 \begin{itemize}  
 \item \textbf{False positive rate}: Percentage of tests which are wrongly stopped. i.e., Early stop says there is a significant difference and stops the test, but the test to the end day (as if there is no early stopping) will tell you it is not significant.
 \item \textbf{Run time reduced(all)}: Percentage of run time reduced for all tests.
 \item \textbf{Run time reduced(true positive)}: Percentage of run time reduced for only the correctly stopped tests.
-\item \textbf{Bias}: Difference of effect size(delta) between stopping day and end day of test(as if there is no early stopping).
+\item \textbf{Bias}: Average difference of effect size(delta) between stopping day and end day of test(as if there is no early stopping).
 \end{itemize}
 
 \section{Evaluation}
@@ -158,11 +158,12 @@ For each combination shown in the table above, we will evaluate the following me
 The evaluation is conducted on both simulation data and real data. Code can be found \href{https://github.com/shansfolder/ABTestingEarlyStoppingEvaluation}{\underline{here}}.
 
 \subsection{Simulation Data}
-We generate 2000 simulation tests based on Gaussian distributed KPIs. We calculate the minimal detectable effect size from power analysis. 1000 tests have a significant difference between control and treatment, and the other 1000 tests have no significant difference. 
+We generate 2000 simulation tests based on Gaussian distributed KPIs, of which 1000 tests have a significant difference between control and treatment, while the other 1000 tests have no significant difference. The effect size of significant difference satisfies the minimal detectable effect size from power analysis. 
 
-We model the frequency of visits of an entity by a Poisson distribution with 3 days per entity in average. We simulate the A/B testing for a period of 20 days, and decide whether to stop on each day.
+We simulate the experiment data for a period of 20 days. We run an analysis and decide whether to stop on each day. The frequency of visits per entity is modelled by a Poisson distribution. It is simulated in a way that an entity will visit the experiment 3 times in average. 
 
-First of all, let's see the performance of different \textbf{significance decision} algorithms.
+First, the table below shows the performance of \textbf{significance decision} algorithms.
+
 \begin{center}
   \begin{tabular}{ | r | c | c | c | c | }
     \hline
@@ -175,7 +176,7 @@ First of all, let's see the performance of different \textbf{significance decisi
 \captionof{table}{Performance of Significance Decision on Simulation Data}
 \end{center}
 
-We can observe in Figure \ref{fig:roc_sim_data} that Bayes factor works very good on false positive rate, but the two interval based approaches works better on true positive rate. In general, the two interval based approaches are a little bit better because of larger distances to the line of random guess, while the error rate of all three methods are acceptable(FPR < 5\% and FNR < 80\%). 
+We can observe in Figure \ref{fig:roc_sim_data} that Bayes factor works very good on false positive rate, but the two interval based approaches works better on true positive rate. In general, the two interval based approaches are a little bit better because of larger distances to the line of random guess, while the error rate of all three methods are acceptable(FPR < 5\% and FNR < 80\%). So there is no strong arguements that one method is better than the others in terms of significance decision on the last day.
 
 \begin{figure} 
 \centering
@@ -184,7 +185,7 @@ We can observe in Figure \ref{fig:roc_sim_data} that Bayes factor works very goo
 \label{fig:roc_sim_data}
 \end{figure}
 
-Next, let's look at the results of \textbf{early stopping} algorithms. To make notations compact, in the following table we use FPR for false positive rate, RTR(all) for run time reduced(all), RTR(TP) for run time reduced(true positive) and CI for confidence interval. The definition of each metric is described previously in Section ~\ref{sec:esc}.
+Next, we show the results of \textbf{early stopping} algorithms in the following table . To make notations compact, we use FPR for false positive rate, RTR(all) for run time reduced(all), RTR(TP) for run time reduced(true positive) and CI for confidence interval. The definition of each metric is described previously in Section ~\ref{sec:esc}.
 
 \begin{center}
   \begin{tabular}{ | r | r | c | c | c | c | c | }
@@ -210,7 +211,9 @@ Next, let's look at the results of \textbf{early stopping} algorithms. To make n
 \captionof{table}{Performance of Early Stopping in A/B test on Simulation Data}
 \end{center}
 
+Note that false positive rate is the most critical metric when evaluating early stopping. This is because it makes no sense how much run time we have saved, if we stop the test with a wrong conclusion.
 
+We observe that there is a large false positive rate by credible interval on A/A tests and also by Bayes precision on A/B tests. It would be dangerous to roll these two methods out in production without further study. In general, the confidence interval approach works best on simulation data.
 
 
 \subsection{Real Data}
