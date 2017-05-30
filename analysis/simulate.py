@@ -170,6 +170,7 @@ def bayes_factor(stan_model, simulation_index, day_index, kpi):
 
 def group_sequential(simulation_index, day_index, kpi_name):
     # calculated via obrien_fleming in ExpAn
+    # FIXME: use information fraction by samples instead of by days
 
     alpha_new = [0.0, 5.7203197734168043e-10, 4.1792768579185235e-07, 1.1726446842441618e-05,
                  8.8575438321303324e-05, 0.00034571958016904603, 0.00092319528256634698, 0.0019419129967408466,
