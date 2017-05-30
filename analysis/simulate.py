@@ -19,7 +19,7 @@ def get_snapshot(dat, start_time):
 
 
 def readSimulationData(sim):
-    dat = pd.read_csv("data/simulation/simulation" + str(sim) + ".csv")
+    dat = pd.read_csv("../data/simulation/simulation" + str(sim) + ".csv")
     return dat
 
 
@@ -250,7 +250,7 @@ def run(func, cpus, **kwargs):
     time_used = end_time - start_time
     print("All time spent in seconds:" + str(time_used.seconds))
 
-    filename = 'output/' + filename
+    filename = '../output/' + filename
     relativeBasedir = os.path.dirname(filename)
     if not os.path.exists(relativeBasedir):
         os.makedirs(relativeBasedir)
