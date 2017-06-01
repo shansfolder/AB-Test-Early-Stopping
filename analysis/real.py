@@ -7,7 +7,7 @@ import pandas as pd
 from joblib import Parallel, delayed
 from pystan import StanModel
 from scipy import stats
-from scipy.stats import gaussian_kde, cauchy
+from scipy.stats import gaussian_kde, cauchy, norm
 
 dataDir = "../data/real/processed/"
 fileNames = ["DTP_CH_web_processed.csv",
@@ -24,6 +24,21 @@ fileNames = ["DTP_CH_web_processed.csv",
 dateColumn = lambda dat: "date" if "date" in dat.columns else "DATE"
 data_before_time = lambda dat, time_idx: dat[dat.time < time_idx]
 readData = lambda fileName: pd.read_csv(dataDir + fileName, low_memory=False)
+
+
+def obrien_fleming(information_fraction, alpha=0.05):
+    """
+    Calculate an approximation of the O'Brien-Fleming alpha spending function.
+    Args:
+        information_fraction (scalar or array_like): share of the information 
+            amount at the point of evaluation, e.g. the share of the maximum 
+            sample size
+        alpha: type-I error rate
+    Returns:
+        float: redistributed alpha value at the time point with the given 
+               information fraction
+    """
+    return (1 - norm.cdf(norm.ppf(1 - alpha / 2) / np.sqrt(information_fraction))) * 2
 
 
 def pooled_std(std1, n1, std2, n2):
@@ -190,11 +205,22 @@ def bayes_factor(dataset, stan_model, kpi, day_index):
 
 def group_sequential(dataset, kpi_name, day_index):
     print("day", day_index)
-    # TODO: calculate new alpha and bounds
-    df = data_before_time(dataset, day_index + 1)
 
-    ctrl = df.loc[df.variant == 'Control', kpi_name]
-    treat = df.loc[df.variant == 'Treatment', kpi_name]
+    dataUntilDay = data_before_time(dataset, day_index + 1)
+
+    information_fraction = len(dataUntilDay) / len(dataset)
+    alpha_new = obrien_fleming(information_fraction)
+
+    # calculate the z-score bound
+    cap = 8
+    bound = norm.ppf(1 - alpha_new / 2)
+    # replace potential inf with an upper bound
+    if bound == np.inf:
+        bound = cap
+        
+        
+    ctrl = dataUntilDay.loc[dataUntilDay.variant == 'Control', kpi_name]
+    treat = dataUntilDay.loc[dataUntilDay.variant == 'Treatment', kpi_name]
     mu_c = np.nanmean(ctrl)
     mu_t = np.nanmean(treat)
     sigma_c = np.nanstd(ctrl)
@@ -203,7 +229,7 @@ def group_sequential(dataset, kpi_name, day_index):
     n_t = sample_size(treat)
     z = (mu_t - mu_c) / np.sqrt(sigma_c ** 2 / n_c + sigma_t ** 2 / n_t)
 
-    if z > bounds[day_index] or z < -bounds[day_index]:
+    if z > bound or z < -bound:
         stop = True
     else:
         stop = False
@@ -216,7 +242,7 @@ def group_sequential(dataset, kpi_name, day_index):
                                  mu_t,
                                  sigma_t,
                                  n_t,
-                                 [alpha_new[day_index] * 100 / 2, 100 - alpha_new[day_index] * 100 / 2])
+                                 [alpha_new * 100 / 2, 100 - alpha_new * 100 / 2])
 
     lower = interval[0][1]
     upper = interval[1][1]
@@ -274,8 +300,8 @@ def addDerivedKPIColumn(dataframe, derived_kpi_name, numerator_column, denominat
     return dataframe
 
 
-def enrichDataset(dataset, derived_kpi_name, numerator_column, denominator_column):
-    original_dataset = readData(dataset)
+def enrichDataset(fileName, derived_kpi_name, numerator_column, denominator_column):
+    original_dataset = readData(fileName)
     time_indexed_dataset = createTimeIndex(original_dataset)
     enhanced_dataset = addDerivedKPIColumn(time_indexed_dataset,
                                            derived_kpi_name,
@@ -284,24 +310,25 @@ def enrichDataset(dataset, derived_kpi_name, numerator_column, denominator_colum
     return enhanced_dataset
 
 
-def runBayes(dataset, derivedKPI):
-    print(dataset)
-    days = len(dataset.time.unique())
+def runBayes(fileName, derived_kpi_name, numerator_column, denominator_column):
+    print(fileName)
+
+    data = enrichDataset(fileName, derived_kpi_name, numerator_column, denominator_column)
+    days = len(data.time.unique())
     stan_model = StanModel(file="../model/normal_kpi.stan")
 
     start_time_bf = datetime.datetime.now()
     results = Parallel(n_jobs=int(4))(
-        delayed(bayes_factor)(dataset,
+        delayed(bayes_factor)(data,
                               stan_model,
                               derivedKPI,
                               d) for d in range(days))
 
-    filename = dataset + ".csv"
     end_time_bf = datetime.datetime.now()
     bf_time_used = end_time_bf - start_time_bf
     print("Bayes factor time spent in seconds:" + str(bf_time_used.seconds))
 
-    filename = '../output/' + filename
+    filename = '../output/' + fileName
     relativeBasedir = os.path.dirname(filename)
     if not os.path.exists(relativeBasedir):
         os.makedirs(relativeBasedir)
@@ -315,9 +342,8 @@ def runBayes(dataset, derivedKPI):
 if __name__ == "__main__":
     printStatisticsOfDatasets()
 
-    fileNames = ["DTP_CH_web_processed.csv"]
+    fileNames = ["lipstick_catalog_naviTracking_bunchbox_IT_processed.csv"]
     derivedKPI = "CRpS"
-    for dataset in fileNames:
-        data = enrichDataset(dataset, derivedKPI, "orders", "sessions")
-        runBayes(data, derivedKPI)
+    for fileName in fileNames:
+        runBayes(fileName, derivedKPI, "orders", "sessions")
         print("---------------------------------")
