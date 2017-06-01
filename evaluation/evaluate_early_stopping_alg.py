@@ -4,7 +4,7 @@ def readData(fileName):
     return pd.read_csv(fileName)
 
 
-def evaluateEarlyStopping(data, idx_column_stop, idx_column_significance):
+def computeEvaluationMetrics(data, idx_column_stop, idx_column_significance):
     falseStoppedCount = 0
     stoppedCount = 0
     daysCount_tp = 0
@@ -48,7 +48,7 @@ def evaluateEarlyStopping(data, idx_column_stop, idx_column_significance):
     return FPR, RTR_all, RTR_tp, bias
 
 
-if __name__ == "__main__":
+def evaluateSimulationData():
     normal_same_frequentist = "../output/group_sequential/group_sequential_normal_same.csv"
     normal_shifted_frequentist = "../output/group_sequential/group_sequential_normal_shifted.csv"
     normal_same_bayesian = "../output/bayes_factor/bayes_factor_normal_same.csv"
@@ -59,26 +59,30 @@ if __name__ == "__main__":
     data_negative_bayesian = readData(normal_same_bayesian)
     data_positive_bayesian = readData(normal_shifted_bayesian)
 
-    FPR, RTR_all, RTR_tp, bias = evaluateEarlyStopping(data_negative_frequentist, "stop", "significant")
+    FPR, RTR_all, RTR_tp, bias = computeEvaluationMetrics(data_negative_frequentist, "stop", "significant")
     print("frequentist A/A", FPR, RTR_all, RTR_tp, bias)
 
-    FPR, RTR_all, RTR_tp, bias = evaluateEarlyStopping(data_positive_frequentist, "stop", "significant")
+    FPR, RTR_all, RTR_tp, bias = computeEvaluationMetrics(data_positive_frequentist, "stop", "significant")
     print("frequentist A/B", FPR, RTR_all, RTR_tp, bias)
 
-    FPR, RTR_all, RTR_tp, bias = evaluateEarlyStopping(data_negative_bayesian, "significant_ci", "significant_ci")
+    FPR, RTR_all, RTR_tp, bias = computeEvaluationMetrics(data_negative_bayesian, "significant_ci", "significant_ci")
     print("credible interval A/A", FPR, RTR_all, RTR_tp, bias)
 
-    FPR, RTR_all, RTR_tp, bias = evaluateEarlyStopping(data_positive_bayesian, "significant_ci", "significant_ci")
+    FPR, RTR_all, RTR_tp, bias = computeEvaluationMetrics(data_positive_bayesian, "significant_ci", "significant_ci")
     print("credible interval A/B", FPR, RTR_all, RTR_tp, bias)
 
-    FPR, RTR_all, RTR_tp, bias = evaluateEarlyStopping(data_negative_bayesian, "significant_and_stop_bf", "significant_and_stop_bf")
+    FPR, RTR_all, RTR_tp, bias = computeEvaluationMetrics(data_negative_bayesian, "significant_and_stop_bf", "significant_and_stop_bf")
     print("bf(stop bf) A/A", FPR, RTR_all, RTR_tp, bias)
 
-    FPR, RTR_all, RTR_tp, bias = evaluateEarlyStopping(data_positive_bayesian, "significant_and_stop_bf", "significant_and_stop_bf")
+    FPR, RTR_all, RTR_tp, bias = computeEvaluationMetrics(data_positive_bayesian, "significant_and_stop_bf", "significant_and_stop_bf")
     print("bf(stop bf) A/B", FPR, RTR_all, RTR_tp, bias)
 
-    FPR, RTR_all, RTR_tp, bias = evaluateEarlyStopping(data_negative_bayesian, "stop_bp", "significant_and_stop_bf")
+    FPR, RTR_all, RTR_tp, bias = computeEvaluationMetrics(data_negative_bayesian, "stop_bp", "significant_and_stop_bf")
     print("bf(stop bp) A/A", FPR, RTR_all, RTR_tp, bias)
 
-    FPR, RTR_all, RTR_tp, bias = evaluateEarlyStopping(data_positive_bayesian, "stop_bp", "significant_and_stop_bf")
+    FPR, RTR_all, RTR_tp, bias = computeEvaluationMetrics(data_positive_bayesian, "stop_bp", "significant_and_stop_bf")
     print("bf(stop bp) A/B", FPR, RTR_all, RTR_tp, bias)
+
+
+if __name__ == "__main__":
+    evaluateSimulationData()
