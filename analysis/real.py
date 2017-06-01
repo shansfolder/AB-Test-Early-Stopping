@@ -328,7 +328,7 @@ def runBayes(fileName, derived_kpi_name, numerator_column, denominator_column):
     bf_time_used = end_time_bf - start_time_bf
     print("Bayes factor time spent in seconds:" + str(bf_time_used.seconds))
 
-    filename = '../output/' + fileName
+    filename = '../output/bayes_factor' + fileName
     relativeBasedir = os.path.dirname(filename)
     if not os.path.exists(relativeBasedir):
         os.makedirs(relativeBasedir)
@@ -337,6 +337,32 @@ def runBayes(fileName, derived_kpi_name, numerator_column, denominator_column):
         out = csv.writer(file_handler)
         for item in results:
             out.writerow(item)
+
+
+def runGroupSequential(fileName, derived_kpi_name, numerator_column, denominator_column):
+    print(fileName)
+
+    data = enrichDataset(fileName, derived_kpi_name, numerator_column, denominator_column)
+    days = len(data.time.unique())
+
+    start_time_gs = datetime.datetime.now()
+    results = Parallel(n_jobs=int(4))(
+        delayed(group_sequential)(data, derivedKPI, d) for d in range(days))
+
+    end_time_gs = datetime.datetime.now()
+    gs_time_used = end_time_gs - start_time_gs
+    print("Group sequential time spent in seconds:" + str(gs_time_used.seconds))
+
+    filename = '../output/group_sequential' + fileName
+    relativeBasedir = os.path.dirname(filename)
+    if not os.path.exists(relativeBasedir):
+        os.makedirs(relativeBasedir)
+
+    with open(filename, 'w+') as file_handler:
+        out = csv.writer(file_handler)
+        for item in results:
+            out.writerow(item)
+
 
 
 if __name__ == "__main__":
