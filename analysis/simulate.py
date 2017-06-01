@@ -1,16 +1,18 @@
+import csv
+import datetime
+import os
 from optparse import OptionParser
+
 import numpy as np
 import pandas as pd
-from pystan import StanModel
 from joblib import Parallel, delayed
+from pystan import StanModel
 from scipy import stats
 from scipy.stats import gaussian_kde, cauchy
-import datetime
-import csv
-import os
 
 sims = 1000
 days = 20
+
 
 def get_snapshot(dat, start_time):
     snapshot = dat[dat.time < start_time]
@@ -148,11 +150,11 @@ def bayes_factor(stan_model, simulation_index, day_index, kpi):
     lower = hdi[0]
     prior = cauchy.pdf(0, loc=0, scale=1)
 
-    bf_01 = kde.evaluate(0)[0]/prior
+    bf_01 = kde.evaluate(0)[0] / prior
     hdi_width = upper - lower
     mean_delta = np.mean(traces['delta'])
 
-    significant_and_stop_bf = bf_01 < 1/3.
+    significant_and_stop_bf = bf_01 < 1 / 3.
     stop_bp = hdi_width < 0.08
     significant_based_on_interval = 0 < lower or 0 > upper
 
@@ -204,11 +206,11 @@ def group_sequential(simulation_index, day_index, kpi_name):
     mean_delta = mu_t - mu_c
 
     interval = normal_difference(mu_c, sigma_c, n_c, mu_t, sigma_t, n_t,
-                                       [alpha_new[day_index] * 100 / 2, 100 - alpha_new[day_index] * 100 / 2])
+                                 [alpha_new[day_index] * 100 / 2, 100 - alpha_new[day_index] * 100 / 2])
 
     lower = interval[0][1]
     upper = interval[1][1]
-    significant_based_on_interval = 0<lower or 0>upper
+    significant_based_on_interval = 0 < lower or 0 > upper
 
     return (simulation_index, day_index, stop, mean_delta, significant_based_on_interval)
 
@@ -260,7 +262,6 @@ def run(func, cpus, **kwargs):
         out = csv.writer(file_handler)
         for item in results:
             out.writerow(item)
-
 
 
 if __name__ == "__main__":

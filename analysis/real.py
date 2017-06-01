@@ -1,5 +1,11 @@
+import csv
+import datetime
+import os
+
 import numpy as np
 import pandas as pd
+from joblib import Parallel, delayed
+from pystan import StanModel
 from scipy import stats
 from scipy.stats import gaussian_kde, cauchy
 
@@ -16,12 +22,8 @@ fileNames = ["DTP_CH_web_processed.csv",
              "segmented_sorting_fasion_floor_trend_processed.csv"]
 
 dateColumn = lambda dat: "date" if "date" in dat.columns else "DATE"
-
-
-def readData(fileName):
-    file = dataDir + fileName
-    dat = pd.read_csv(file, low_memory=False)
-    return dat
+data_before_time = lambda dat, time_idx: dat[dat.time < time_idx]
+readData = lambda fileName: pd.read_csv(dataDir + fileName, low_memory=False)
 
 
 def pooled_std(std1, n1, std2, n2):
@@ -111,35 +113,54 @@ def fit_stan(sm, df, kpi):
         fit (StanFit4Model)
         delta_trace (array)
     """
-    if 'normal' in kpi:
-        fit_data = {'Nc': sum(df.variant == 'A'),
-                    'Nt': sum(df.variant == 'B'),
-                    'x': df[kpi][df.variant == 'A'],
-                    'y': df[kpi][df.variant == 'B']}
-    else:
-        raise NotImplementedError
+    ctrl = df.loc[df.variant == 'Control', kpi]
+    treat = df.loc[df.variant == 'Treatment', kpi]
 
-    fit = sm.sampling(data=fit_data, iter=15000, chains=4, n_jobs=1)
+    ctrl = ctrl.dropna()
+    treat = treat.dropna()
 
-    # extract the traces
+    n_c = len(ctrl)
+    n_t = len(treat)
+
+    # n_c = sample_size(ctrl)
+    # n_t = sample_size(treat)
+
+    fit_data = {'Nc': n_c, 'Nt': n_t, 'x': ctrl, 'y': treat}
+    fit = sm.sampling(data=fit_data, iter=25000, chains=4, n_jobs=1)
     traces = fit.extract()
     return fit, traces
 
 
-def bayes_factor(stan_model, kpi):
+def sample_size(x):
     """
+    Calculates sample size of a sample x
     Args:
-        sm (pystan.model.StanModel): precompiled Stan model object
-        simulation_index (int): random seed used for the simulation
-        day_index (int): time step of the peeking
-        kpi (str): KPI name
-
+        x (array_like): sample to calculate sample size
     Returns:
-        Bayes factor based on the Savage-Dickey density ratio
+        int: sample size of the sample excluding nans
     """
-    print("simulation:" + str(simulation_index) + ", day:" + str(day_index))
-    dat = readSimulationData(simulation_index)
-    df = get_snapshot(dat, day_index + 1)
+    # cast into a dummy numpy array to infer the dtype
+    if ~isinstance(x, np.ndarray):
+        dummy = np.array(x)
+    is_numeric = np.issubdtype(dummy.dtype, np.number)
+
+    if is_numeric:
+        # Coercing missing values to right format
+        _x = np.array(x, dtype=float)
+        x_nan = np.isnan(_x).sum()
+
+    # assuming categorical sample
+    elif isinstance(x, pd.core.series.Series):
+        x_nan = x.str.contains('NA').sum()
+    else:
+        x_nan = list(x).count('NA')
+
+    return len(x) - x_nan
+
+
+def bayes_factor(dataset, stan_model, kpi, day_index):
+    print("day", day_index)
+    df = data_before_time(dataset, day_index + 1)
 
     fit, traces = fit_stan(stan_model, df, kpi)
     kde = gaussian_kde(traces['delta'])
@@ -156,8 +177,7 @@ def bayes_factor(stan_model, kpi):
     stop_bp = hdi_width < 0.08
     significant_based_on_interval = 0 < lower or 0 > upper
 
-    return (simulation_index,
-            day_index,
+    return (day_index,
             bf_01,
             significant_and_stop_bf,
             hdi_width,
@@ -168,17 +188,19 @@ def bayes_factor(stan_model, kpi):
             significant_based_on_interval)
 
 
-def group_sequential(kpi_name):
-    dat = readSimulationData(simulation_index)
-    kpi = get_snapshot(dat, day_index + 1)
-    ctrl = kpi.loc[kpi.variant == 'A', kpi_name]
-    treat = kpi.loc[kpi.variant == 'B', kpi_name]
-    mu_c = ctrl.mean()
-    mu_t = treat.mean()
-    sigma_c = ctrl.std()
-    sigma_t = treat.std()
-    n_c = len(ctrl)
-    n_t = len(treat)
+def group_sequential(dataset, kpi_name, day_index):
+    print("day", day_index)
+    # TODO: calculate new alpha and bounds
+    df = data_before_time(dataset, day_index + 1)
+
+    ctrl = df.loc[df.variant == 'Control', kpi_name]
+    treat = df.loc[df.variant == 'Treatment', kpi_name]
+    mu_c = np.nanmean(ctrl)
+    mu_t = np.nanmean(treat)
+    sigma_c = np.nanstd(ctrl)
+    sigma_t = np.nanstd(treat)
+    n_c = sample_size(ctrl)
+    n_t = sample_size(treat)
     z = (mu_t - mu_c) / np.sqrt(sigma_c ** 2 / n_c + sigma_t ** 2 / n_t)
 
     if z > bounds[day_index] or z < -bounds[day_index]:
@@ -188,18 +210,22 @@ def group_sequential(kpi_name):
 
     mean_delta = mu_t - mu_c
 
-    interval = normal_difference(mu_c, sigma_c, n_c, mu_t, sigma_t, n_t,
+    interval = normal_difference(mu_c,
+                                 sigma_c,
+                                 n_c,
+                                 mu_t,
+                                 sigma_t,
+                                 n_t,
                                  [alpha_new[day_index] * 100 / 2, 100 - alpha_new[day_index] * 100 / 2])
 
     lower = interval[0][1]
     upper = interval[1][1]
     significant_based_on_interval = 0 < lower or 0 > upper
 
-    return (simulation_index, day_index, stop, mean_delta, significant_based_on_interval)
+    return (day_index, stop, mean_delta, significant_based_on_interval)
 
 
-
-if __name__ == "__main__":
+def printStatisticsOfDatasets():
     for fileName in fileNames:
         print("data file:", fileName)
         dat = readData(fileName)
@@ -211,3 +237,87 @@ if __name__ == "__main__":
         print("columns", dat.columns)
         print("---------------------------------")
     print("---------------------------------")
+
+
+def createTimeIndex(dataframe):
+    # create a dict from date to day_index
+    date_column = dateColumn(dataframe)
+    date_values = np.sort(dataframe[date_column].unique())
+
+    time_index_map = dict([(date, index) for (index, date) in enumerate(date_values)])
+    date_idx_column = list(map(lambda x: time_index_map.get(x), dataframe[date_column]))
+
+    return dataframe.assign(time=date_idx_column)
+
+
+def addDerivedKPIColumn(dataframe, derived_kpi_name, numerator_column, denominator_column):
+    ctrl_reference_kpis = dataframe.loc[dataframe.variant == 'Control', denominator_column]
+    treat_reference_kpis = dataframe.loc[dataframe.variant == 'Treatment', denominator_column]
+
+    n_nan_ref_ctrl = sum(ctrl_reference_kpis == 0) + np.isnan(ctrl_reference_kpis).sum()
+    n_non_nan_ref_ctrl = len(ctrl_reference_kpis) - n_nan_ref_ctrl
+
+    n_nan_ref_treat = sum(treat_reference_kpis == 0) + np.isnan(treat_reference_kpis).sum()
+    n_non_nan_ref_treat = len(treat_reference_kpis) - n_nan_ref_treat
+
+    ctrl_weights = n_non_nan_ref_ctrl * ctrl_reference_kpis / np.nansum(ctrl_reference_kpis)
+    treat_weights = n_non_nan_ref_treat * treat_reference_kpis / np.nansum(treat_reference_kpis)
+
+    newColumn = {derived_kpi_name: dataframe[numerator_column] / dataframe[denominator_column]}
+    dataframe = dataframe.assign(**newColumn)
+    dataframe.loc[dataframe.variant == 'Control', derived_kpi_name] *= ctrl_weights
+    dataframe.loc[dataframe.variant == 'Treatment', derived_kpi_name] *= treat_weights
+
+    msg = derived_kpi_name + ": " + str(np.isnan(dataframe[derived_kpi_name]).sum()) + \
+          " out of " + str(len(dataframe)) + " is nan."
+    print(msg)
+    return dataframe
+
+
+def enrichDataset(dataset, derived_kpi_name, numerator_column, denominator_column):
+    original_dataset = readData(dataset)
+    time_indexed_dataset = createTimeIndex(original_dataset)
+    enhanced_dataset = addDerivedKPIColumn(time_indexed_dataset,
+                                           derived_kpi_name,
+                                           numerator_column,
+                                           denominator_column)
+    return enhanced_dataset
+
+
+def runBayes(dataset, derivedKPI):
+    print(dataset)
+    days = len(dataset.time.unique())
+    stan_model = StanModel(file="../model/normal_kpi.stan")
+
+    start_time_bf = datetime.datetime.now()
+    results = Parallel(n_jobs=int(4))(
+        delayed(bayes_factor)(dataset,
+                              stan_model,
+                              derivedKPI,
+                              d) for d in range(days))
+
+    filename = dataset + ".csv"
+    end_time_bf = datetime.datetime.now()
+    bf_time_used = end_time_bf - start_time_bf
+    print("Bayes factor time spent in seconds:" + str(bf_time_used.seconds))
+
+    filename = '../output/' + filename
+    relativeBasedir = os.path.dirname(filename)
+    if not os.path.exists(relativeBasedir):
+        os.makedirs(relativeBasedir)
+
+    with open(filename, 'w+') as file_handler:
+        out = csv.writer(file_handler)
+        for item in results:
+            out.writerow(item)
+
+
+if __name__ == "__main__":
+    printStatisticsOfDatasets()
+
+    fileNames = ["DTP_CH_web_processed.csv"]
+    derivedKPI = "CRpS"
+    for dataset in fileNames:
+        data = enrichDataset(dataset, derivedKPI, "orders", "sessions")
+        runBayes(data, derivedKPI)
+        print("---------------------------------")
