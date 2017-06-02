@@ -294,13 +294,16 @@ def addDerivedKPIColumn(dataframe, derived_kpi_name, numerator_column, denominat
     dataframe.loc[dataframe.variant == 'Control', derived_kpi_name] *= ctrl_weights
     dataframe.loc[dataframe.variant == 'Treatment', derived_kpi_name] *= treat_weights
 
-    msg = derived_kpi_name + ": " + str(np.isnan(dataframe[derived_kpi_name]).sum()) + \
-          " out of " + str(len(dataframe)) + " is nan."
+    n_nan = np.isnan(dataframe[derived_kpi_name]).sum()
+    nan_percentage_str = "%.4f" % (n_nan / len(dataframe))
+    msg = derived_kpi_name + ": " + str(n_nan) + " out of " + str(len(dataframe)) + \
+        " is nan. Percentage:" + nan_percentage_str
     print(msg)
     return dataframe
 
 
 def enrichDataset(fileName, derived_kpi_name, numerator_column, denominator_column):
+    print(fileName)
     original_dataset = readData(fileName)
     time_indexed_dataset = createTimeIndex(original_dataset)
     enhanced_dataset = addDerivedKPIColumn(time_indexed_dataset,
@@ -311,8 +314,6 @@ def enrichDataset(fileName, derived_kpi_name, numerator_column, denominator_colu
 
 
 def runBayes(fileName, derived_kpi_name, numerator_column, denominator_column):
-    print(fileName)
-
     data = enrichDataset(fileName, derived_kpi_name, numerator_column, denominator_column)
     days = len(data.time.unique())
     stan_model = StanModel(file="../model/normal_kpi.stan")
@@ -328,7 +329,7 @@ def runBayes(fileName, derived_kpi_name, numerator_column, denominator_column):
     bf_time_used = end_time_bf - start_time_bf
     print("Bayes factor time spent in seconds:" + str(bf_time_used.seconds))
 
-    filename = '../output/bayes_factor' + fileName
+    filename = '../output/bayes_factor/' + fileName
     relativeBasedir = os.path.dirname(filename)
     if not os.path.exists(relativeBasedir):
         os.makedirs(relativeBasedir)
@@ -340,8 +341,6 @@ def runBayes(fileName, derived_kpi_name, numerator_column, denominator_column):
 
 
 def runGroupSequential(fileName, derived_kpi_name, numerator_column, denominator_column):
-    print(fileName)
-
     data = enrichDataset(fileName, derived_kpi_name, numerator_column, denominator_column)
     days = len(data.time.unique())
 
@@ -353,7 +352,7 @@ def runGroupSequential(fileName, derived_kpi_name, numerator_column, denominator
     gs_time_used = end_time_gs - start_time_gs
     print("Group sequential time spent in seconds:" + str(gs_time_used.seconds))
 
-    filename = '../output/group_sequential' + fileName
+    filename = '../output/group_sequential/' + fileName
     relativeBasedir = os.path.dirname(filename)
     if not os.path.exists(relativeBasedir):
         os.makedirs(relativeBasedir)
@@ -368,8 +367,10 @@ def runGroupSequential(fileName, derived_kpi_name, numerator_column, denominator
 if __name__ == "__main__":
     printStatisticsOfDatasets()
 
-    fileNames = ["lipstick_catalog_naviTracking_bunchbox_IT_processed.csv"]
+    fileNames = ["Editorial_Catalog_entries_Msite_processed.csv"]
     derivedKPI = "CRpS"
     for fileName in fileNames:
-        runBayes(fileName, derivedKPI, "orders", "sessions")
+        # enrichDataset(fileName, derivedKPI, "orders", "sessions")
+        # runGroupSequential(fileName, derivedKPI, "orders", "sessions")
+        # runBayes(fileName, derivedKPI, "orders", "sessions")
         print("---------------------------------")
