@@ -209,7 +209,7 @@ Next, we show the results of \textbf{early stopping} algorithms in the following
     Bayes factor & Bayes factor & Bayesian & 7.8\% & 46.44\% & 52.96\% & 0.00 \\ \hline
     Bayes factor & Bayes precision & Bayesian & \textbf{67.8}\% & 77.95\% & 77.76\% & -0.02 \\ \hline
   \end{tabular}
-\captionof{table}{Performance of early stopping on simulation data}
+\captionof{table}{Performance of early stopping in A/B test on simulation data}
 \end{center}
 
 Note that false positive rate is the most critical metric when evaluating early stopping. This is because it makes no sense how much run time we have saved, if we stop the test with a wrong conclusion.
@@ -284,7 +284,11 @@ where
 \end{split}					
 \end{align}
 
-Now that we have seen all components to evaluate real-world usecases, we can show the result of performance on real data. It is illustrated in the table below.
+Now that we have seen all components to evaluate real-world usecases, we can show the result of performance on real data. The result is illustrated in the Table \ref{table:final}.
+
+We observe that the frequentist early stopping approach works on real data as on simulation data. Bayes factor also works fine in most cases.
+
+Another interesting observation is that Bayes precision always saves a large amount of time, this is because Bayes precision implicitly stops on both side --- supporting $H_0$ and supporting $H_1$ --- whereas the other three methods only stops when there is a significant difference, i.e., only stops supporting $H_1$.
 
 \begin{center}
   \begin{tabular}{ | c | p{30mm} | p{30mm} | p{30mm} | p{30mm} |}
@@ -302,13 +306,14 @@ Now that we have seen all components to evaluate real-world usecases, we can sho
      FFT & No stop & No stop & No stop & Correctly stopped: saved 70\% time \\ \hline
   \end{tabular}
 \captionof{table}{Performance of early stopping on real data}
+\label{table:final}
 \end{center}
 
 
 \section{Conclusion}
-Given bad performance of Bayes precision and credible interval on both simulation data and real data, we will need to investigate further on the theory and implementation of these two methods.
+Given the performance of Bayes precision and credible interval on both simulation data and real data, there is still much space to improve. We will need to investigate further on the theory and implementation of these two methods.
 
-Bayes factors and the frequentist approach both perform good. However, we need to change the whole concept of our A/B testing to roll out the Bayesian approach in live system. Therefore, we suggest the frequentist approach --- i.e., use group sequential method for early stopping and confidence interval for significance decision.
+Bayes factors and the frequentist approach both perform good. However, we have to change the whole concept of our A/B testing to roll out the Bayesian approach in live system. Therefore, we suggest the frequentist approach --- i.e., use group sequential method for early stopping and confidence interval for significance decision.
 
 %----------------------------------------------------------------------------------------
 
