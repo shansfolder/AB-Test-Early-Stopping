@@ -263,7 +263,7 @@ CR^{(pe)} = \frac{1}{n} \sum_{i=1}^{n} CR_i = \frac{1}{n} \sum_{i=1}^{n} \frac{O
 \end{split}					
 \end{align}
 
-This approach assumes equal weights on the contribution of each visit, which might lead to huge bias in practice. In fact, the product analysts in Zalando use the ratio of totals to reflect not the entities? contributions but overall equal contributions to the conversion rate, which can be formulated as:
+This approach assumes equal weights on the contribution of each visit, which might lead to huge bias in practice. In fact, the product analysts in Zalando use the ratio of totals to reflect overall equal contributions to the conversion rate, which can be formulated as:
 \begin{align} 
 \begin{split}
 CR^{(rt)} = \frac{\sum_{i=1}^{n}O_i}{\sum_{i=1}^{n}S_i} 
@@ -296,10 +296,10 @@ Now that we have seen all components to evaluate real-world usecases, we can sho
      ECEM & No stop & No stop & No stop & Correctly stopped: saved 94\% time \\ \hline
      LCIT & No stop & & & \\ \hline
      LCNL & No stop & & & \\ \hline
-     FFF & Correctly stopped: saved 1\% time & & & \\ \hline
-     FFM & No stop & & & \\ \hline
-     FFNF & No stop & & & \\ \hline
-     FFT & No stop & & & \\ \hline
+     FFF & Correctly stopped: saved 1\% time & Correctly stopped: saved 79\% time & No stop & Correctly stopped: saved 91\% time \\ \hline
+     FFM & No stop & No stop & No stop & Correctly stopped: saved 84\% time \\ \hline
+     FFNF & No stop & \textbf{Wrongly} stopped & No stop & Correctly stopped: saved 91\% time\\ \hline
+     FFT & No stop & No stop & No stop & Correctly stopped: saved 70\% time \\ \hline
   \end{tabular}
 \captionof{table}{Performance of early stopping on real data}
 \end{center}
